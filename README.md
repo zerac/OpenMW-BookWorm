@@ -1,39 +1,40 @@
-# 📚 BookWorm for OpenMW
+# OpenMW BookWorm (Director's Cut)
 
-A modern, lightweight library management and book-tracking mod built specifically for the **OpenMW 0.50+** Lua API. **BookWorm** allows scholars of Vvardenfell to track their reading progress, discover rare skill books through environmental scanning, and maintain a persistent personal library.
+A modern, immersive lore-tracking and library management mod for **OpenMW 0.50+**. Designed specifically for the *I Heart Vanilla DC* mod list, BookWorm allows you to build a comprehensive digital library of every tome and letter you discover in Vvardenfell without cluttering your physical inventory.
 
-## 🌟 Key Features
+## 🚀 Key Features
 
-*   **Environmental Shelf Scanner:** Automatically identifies books in the world as you look at them using advanced dot-product vector math.
-*   **Rare Book Detection:** Instantly notifies you if a book on a shelf contains a skill increase, playing a unique "rare" discovery sound.
-*   **Dynamic Library UI:** A custom, paginated book interface (using `tx_menubook.dds`) that categorizes your read collection into Combat, Magic, Stealth, and Lore.
-*   **Smart Save/Load:** Includes a "time-travel" safety filter that ensures your reading history stays synchronized with your character's timeline during save loads.
-*   **Scholar's Export:** Export your entire reading history (including timestamps and skill types) directly to the `openmw.log` with a simple hotkey.
+*   **Remote Reading UI**: Open and read any book or letter directly from your library interface using a "Ghost Object" system.
+*   **Intelligent Inventory Reversion**: Automatically detects and reverts "Take" actions from the UI to prevent item duplication, even when interacting with existing item stacks.
+*   **Lore Scanner**: A dot-product based vision system that alerts you when looking at a "New Discovery" (unread book or rare tome) in the world.
+*   **Thematic UI**: A paginated, high-resolution interface using vanilla textures with dynamic category coloring (Combat, Magic, Stealth, and Lore).
+*   **Skill Book Identification**: Automatically highlights and categorizes books that provide skill increases.
+*   **Audio Immersion**: Integrated vanilla sound effects for opening, closing, and flipping pages, including specific cues for skill raises.
+*   **External Export**: Shift+K/L commands to export your entire reading history directly to the `openmw.log` for external reference.
 
-## 🛠️ Modular Architecture
+## 🛠 Technical Implementation (OpenMW 0.50 Lua)
 
-The mod is split into specialized Lua modules for maximum performance and easy maintenance:
-*   **player.lua**: The central event controller.
-*   **global.lua**: Handles inventory-use events and item registration.
-*   **scanner.lua**: Dedicated spatial detection and camera math.
-*   **ui_library.lua**: Handles all visual layouts and UI construction.
-*   **state_manager.lua**: Manages data persistence, loading filters, and logging.
-*   **utils.lua**: Contains skill maps, color definitions, and naming helpers.
+*   **Inventory Delta Logic**: Uses `Actor.inventory:countOf` snapshots to maintain inventory integrity during remote UI sessions.
+*   **Ghost Object Management**: Utilizes `world.createObject` to generate transient UI targets that are safely garbage-collected upon UI closure.
+*   **Stack-Safety**: Implements strict `parentContainer` and `count` validation to ensure engine merges during "Take" actions do not cause Lua state crashes.
+*   **Simulation Time Persistence**: Saves reading timestamps using `core.getSimulationTime()` for accurate cross-save lore tracking.
 
 ## ⌨️ Controls
 
-*   **[K]**: Open/Close Personal Library.
-*   **[I] / [O]**: Navigate Library pages (with audio feedback).
-*   **[Shift + K]**: Export library data to `openmw.log`.
+*   **[ K ]**: Toggle **Tomes** Library (Books).
+*   **[ L ]**: Toggle **Letters** Library (Scrolls and Notes).
+*   **[ I ] / [ O ]**: Previous / Next Page.
+*   **[ Shift + K/L ]**: Export collection to `openmw.log`.
+*   **[ Left Click ]**: Read a book remotely from the list.
 
-## 📦 Installation
+## 📂 Project Structure
 
-1. Copy the `scripts` folder into your OpenMW `Data Files` directory or a dedicated mod folder.
-2. Register the mod in your `openmw.cfg` or via the [OpenMW Launcher](https://openmw.org):
-   `content=BookWorm.omwscripts` (if using a manifest file) or ensure the scripts are properly pathed.
-3. Ensure you are running **OpenMW 0.50** or newer.
-
-## 🔗 Resources
-
-*   [OpenMW Lua API Documentation](https://openmw.readthedocs.io)
-*   [Modding-OpenMW.com](https://modding-openmw.com)
+```text
+scripts/BookWorm/
+├── global.lua        # Ghosting logic & inventory stack cleanup
+├── player.lua        # Event hub, scanner throttling, & UI state
+├── scanner.lua       # Dot-product target acquisition
+├── state_manager.lua # Save/Load persistence & log exporting
+├── ui_library.lua    # OpenMW.UI rendering & widget templates
+├── input_handler.lua # Window toggling & pagination logic
+└── utils.lua         # Skill mapping, color palette, & filters

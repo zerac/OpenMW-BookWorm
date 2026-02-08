@@ -16,13 +16,13 @@ return {
             local player = data.player
             local inv = types.Actor.inventory(player)
             
-            -- 1. Take Snapshot of current inventory count
+            -- 1. Take Snapshot
             local currentCount = inv:countOf(data.recordId)
             
             if not playerSnapshots[player.id] then playerSnapshots[player.id] = {} end
             playerSnapshots[player.id][data.recordId] = currentCount
             
-            -- 2. Create the Ghost purely for UI display
+            -- 2. Create the Ghost
             local tempObj = world.createObject(data.recordId)
             
             player:sendEvent('BookWorm_OpenRemoteUI', { 
@@ -41,24 +41,29 @@ return {
                 local inv = types.Actor.inventory(player)
                 local currentCount = inv:countOf(recordId)
                 
-                -- THE INVENTORY FIX:
-                -- If count increased (Player clicked 'Take' in UI)
+                -- 1. THE INVENTORY FIX:
+                -- Revert the 'Take' action by removing 1 item from the REAL stack.
                 if currentCount > snapshotCount then
-                    -- Get all books to find the actual real items, not the ghost
                     local books = inv:getAll(types.Book)
                     for _, item in ipairs(books) do
-                        -- Logic: ID matches, it's NOT the ghost, and it actually has items to remove
-                        if item.recordId == recordId and item ~= data.target and item.count > 0 then
+                        if item.recordId == recordId and 
+                           item ~= data.target and 
+                           item:isValid() and 
+                           item.count >= 1 then 
+                            
                             item:remove(1)
                             break 
                         end
                     end
                 end
                 
-                -- THE MEMORY FIX:
-                -- Destroy the ghost object passed back from player.lua
+                -- 2. THE MEMORY FIX (Conditioned):
+                -- Only call remove if the ghost is valid AND still has a count.
+                -- In a stack merge, the ghost's count becomes 0, and calling remove() on it fails.
                 if data.target and data.target:isValid() then
-                    data.target:remove()
+                    if data.target.count > 0 then
+                        data.target:remove()
+                    end
                 end
                 
                 playerSnapshots[player.id][recordId] = nil
