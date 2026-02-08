@@ -18,6 +18,7 @@ local lastTargetId, lastLookedAtObj = nil, nil
 local scanTimer, bookPage, notePage = 0, 1, 1
 local itemsPerPage = 20
 local currentRemoteRecordId = nil 
+local currentRemoteTarget = nil
 
 local function markAsRead(obj)
     if not obj or obj.type ~= types.Book or utils.blacklist[obj.recordId:lower()] then return end
@@ -91,15 +92,20 @@ return {
         end,
         BookWorm_OpenRemoteUI = function(data)
             currentRemoteRecordId = data.recordId 
+            currentRemoteTarget = data.target
             I.UI.setMode(data.mode, { target = data.target })
         end,
         UiModeChanged = function(data)
             if data.newMode == "Book" or data.newMode == "Scroll" then 
                 markAsRead(data.arg or lastLookedAtObj) 
             elseif data.newMode == nil and currentRemoteRecordId then
-                -- Triggers the Global Cleanup logic
-                core.sendGlobalEvent('BookWorm_CleanupRemote', { recordId = currentRemoteRecordId, player = self })
+                core.sendGlobalEvent('BookWorm_CleanupRemote', { 
+                    recordId = currentRemoteRecordId, 
+                    player = self,
+                    target = currentRemoteTarget 
+                })
                 currentRemoteRecordId = nil
+                currentRemoteTarget = nil
             end
             if activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then 
                 activeWindow:destroy(); activeWindow, activeMode = nil, nil 

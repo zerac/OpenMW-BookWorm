@@ -1,5 +1,15 @@
 # mod code in GitHub
-https://github.com/zerac/OpenMW-BookWorm#
+https://raw.githubusercontent.com/zerac/OpenMW-BookWorm/refs/heads/feature/Add-Links/BookWorm/scripts/BookWorm/global.lua
+https://raw.githubusercontent.com/zerac/OpenMW-BookWorm/refs/heads/feature/Add-Links/BookWorm/scripts/BookWorm/player.lua
+https://raw.githubusercontent.com/zerac/OpenMW-BookWorm/refs/heads/feature/Add-Links/BookWorm/scripts/BookWorm/scanner.lua
+https://raw.githubusercontent.com/zerac/OpenMW-BookWorm/refs/heads/feature/Add-Links/BookWorm/scripts/BookWorm/state_manager.lua
+https://raw.githubusercontent.com/zerac/OpenMW-BookWorm/refs/heads/feature/Add-Links/BookWorm/scripts/BookWorm/ui_library.lua
+https://raw.githubusercontent.com/zerac/OpenMW-BookWorm/refs/heads/feature/Add-Links/BookWorm/scripts/BookWorm/utils.lua
+https://raw.githubusercontent.com/zerac/OpenMW-BookWorm/refs/heads/feature/Add-Links/BookWorm/scripts/BookWorm/input_handler.lua
+
+# openmw github sources for 0.50
+https://github.com/OpenMW/openmw/tree/openmw-50
+
 
 # mod pack
 I Heart Vanilla DC (Directors Cut)
@@ -21,9 +31,6 @@ I Heart Vanilla DC (Directors Cut)
 [20:28:02.420 I] Using reverse-z depth buffer
 [20:28:03.259 I] Initializing LuaUtil::LuaState without profiler
 [20:28:03.259 I] Lua version: Lua 5.1.4 (LuaJIT 2.1.0-beta3)
-
-# openmw github sources for 0.50
-https://github.com/OpenMW/openmw/tree/openmw-50
 
 # openmw 0.50 release notes
 https://github.com/OpenMW/openmw/releases/tag/openmw-0.50.0
@@ -49,3 +56,6 @@ reset: luap I.BookWorm.reset()
 
 https://elderscrolls.fandom.com/wiki/Books_(Morrowind)/Letters
 https://en.uesp.net/wiki/Morrowind:Notes
+
+# book mods
+https://www.nexusmods.com/morrowind/mods/55126

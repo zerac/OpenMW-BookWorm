@@ -1,7 +1,7 @@
 local world = require('openmw.world')
 local types = require('openmw.types')
 
--- Snapshot storage: [player.id] = { [recordId] = { count = X, ghost = obj } }
+-- Snapshot storage: [player.id] = { [recordId] = originalCount }
 local playerSnapshots = {}
 
 return {
@@ -15,19 +15,16 @@ return {
         BookWorm_RequestRemoteObject = function(data)
             local player = data.player
             local inv = types.Actor.inventory(player)
+            
+            -- 1. Take Snapshot of current inventory count
             local currentCount = inv:countOf(data.recordId)
             
-            -- Create the temporary 'Ghost' just to open the UI
+            if not playerSnapshots[player.id] then playerSnapshots[player.id] = {} end
+            playerSnapshots[player.id][data.recordId] = currentCount
+            
+            -- 2. Create the Ghost purely for UI display
             local tempObj = world.createObject(data.recordId)
             
-            if not playerSnapshots[player.id] then playerSnapshots[player.id] = {} end
-            
-            -- Store snapshot and the ghost reference
-            playerSnapshots[player.id][data.recordId] = {
-                count = currentCount,
-                ghost = tempObj
-            }
-
             player:sendEvent('BookWorm_OpenRemoteUI', { 
                 target = tempObj, 
                 mode = data.mode,
@@ -38,25 +35,30 @@ return {
         BookWorm_CleanupRemote = function(data)
             local player = data.player
             local recordId = data.recordId
-            local snapshot = playerSnapshots[player.id] and playerSnapshots[player.id][recordId]
+            local snapshotCount = playerSnapshots[player.id] and playerSnapshots[player.id][recordId]
             
-            if snapshot then
+            if snapshotCount ~= nil then
                 local inv = types.Actor.inventory(player)
                 local currentCount = inv:countOf(recordId)
                 
                 -- THE INVENTORY FIX:
-                -- If you clicked 'Take', your count is now higher. 
-                -- We remove 1 item from your inventory stack to revert it.
-                if currentCount > snapshot.count then
-                    -- Try removeItem (Standard 0.50)
-                    inv:remove(recordId, 1)
+                -- If count increased (Player clicked 'Take' in UI)
+                if currentCount > snapshotCount then
+                    -- Get all books to find the actual real items, not the ghost
+                    local books = inv:getAll(types.Book)
+                    for _, item in ipairs(books) do
+                        -- Logic: ID matches, it's NOT the ghost, and it actually has items to remove
+                        if item.recordId == recordId and item ~= data.target and item.count > 0 then
+                            item:remove(1)
+                            break 
+                        end
+                    end
                 end
                 
-                -- THE MEMORY FIX (The Ghost):
-                -- We delete the 'virtual' object we created so it doesn't 
-                -- sit in the engine's memory forever.
-                if snapshot.ghost and snapshot.ghost:isValid() and snapshot.ghost.parentContainer == nil then
-                    snapshot.ghost:remove()
+                -- THE MEMORY FIX:
+                -- Destroy the ghost object passed back from player.lua
+                if data.target and data.target:isValid() then
+                    data.target:remove()
                 end
                 
                 playerSnapshots[player.id][recordId] = nil
