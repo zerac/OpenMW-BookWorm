@@ -5,24 +5,34 @@ local self = require('openmw.self')
 local state_manager = {}
 
 function state_manager.processLoad(data)
-    if data and data.booksRead then
-        local filtered = {}
+    local state = { books = {}, notes = {} }
+    if data then
         local saveMarker = data.saveTimestamp or 0
-        for id, ts in pairs(data.booksRead) do 
-            if ts <= saveMarker then filtered[id] = ts end 
+        if data.booksRead then
+            for id, ts in pairs(data.booksRead) do if ts <= saveMarker then state.books[id] = ts end end
         end
-        return filtered
+        if data.notesRead then
+            for id, ts in pairs(data.notesRead) do if ts <= saveMarker then state.notes[id] = ts end end
+        end
     end
-    return {}
+    return state
 end
 
-function state_manager.exportToLog(booksRead, utils)
-    local name = types.Player.record(self).name
-    print(string.format("--- BOOKWORM SAVE EXPORT: %s ---", name))
-    for id, ts in pairs(booksRead) do 
+-- Export only Books
+function state_manager.exportBooks(books, utils)
+    print(string.format("--- BOOKWORM: BOOK EXPORT [%s] ---", types.Player.record(self).name))
+    for id, ts in pairs(books) do 
         local skillId, _ = utils.getSkillInfo(id)
         local label = skillId and (skillId:sub(1,1):upper() .. skillId:sub(2)) or "Lore"
-        print(string.format("[%0.1f sec] [%s] %s (%s)", ts, label, utils.getBookName(id), id)) 
+        print(string.format("[%0.1f] [%s] %s (%s)", ts, label, utils.getBookName(id), id)) 
+    end
+end
+
+-- Export only Letters
+function state_manager.exportLetters(notes, utils)
+    print(string.format("--- BOOKWORM: LETTER EXPORT [%s] ---", types.Player.record(self).name))
+    for id, ts in pairs(notes) do 
+        print(string.format("[%0.1f] [Note] %s (%s)", ts, utils.getBookName(id), id)) 
     end
 end
 

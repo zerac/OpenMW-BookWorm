@@ -20,9 +20,12 @@ function scanner.findBestBook(maxDist, dotThreshold)
 
     for _, obj in ipairs(nearby.items) do
         if obj.type == types.Book then
+            -- The scanner now sees all Book types.
+            -- Filtering logic is handled by the player/utils script.
             local objDir = (obj.position - camPos):normalize()
             local dot = objDir:dot(lookDir)
             local dist = (obj.position - camPos):length()
+            
             if dot > dotThreshold and dist < maxDist and dot > maxDot then
                 bestObj = obj; maxDot = dot
             end

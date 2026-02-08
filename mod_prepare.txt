@@ -1,3 +1,5 @@
+# mod code in GitHub
+https://github.com/zerac/OpenMW-BookWorm#
 
 # mod pack
 I Heart Vanilla DC (Directors Cut)
@@ -45,3 +47,5 @@ reset: luap I.BookWorm.reset()
 
 - common papers activate on-shelf message , but they should not . we dont have include letters or notes to the list ?
 
+https://elderscrolls.fandom.com/wiki/Books_(Morrowind)/Letters
+https://en.uesp.net/wiki/Morrowind:Notes
