@@ -4,8 +4,10 @@ local input = require('openmw.input')
 local ambient = require('openmw.ambient')
 local core = require('openmw.core')
 local I = require('openmw.interfaces')
+local self = require('openmw.self')
 
 local utils = require('scripts.BookWorm.utils')
+local ui_library = require('scripts.BookWorm.ui_library')
 local scanner = require('scripts.BookWorm.scanner')
 local state = require('scripts.BookWorm.state_manager')
 local handler = require('scripts.BookWorm.input_handler')
@@ -15,21 +17,22 @@ local activeWindow, activeMode = nil, nil
 local lastTargetId, lastLookedAtObj = nil, nil
 local scanTimer, bookPage, notePage = 0, 1, 1
 local itemsPerPage = 20
+local currentRemoteRecordId = nil 
+local currentRemoteTarget = nil
 
 local function markAsRead(obj)
     if not obj or obj.type ~= types.Book or utils.blacklist[obj.recordId:lower()] then return end
-    local isNote = utils.isLoreNote(obj.recordId)
+    local id = obj.recordId
+    local isNote = utils.isLoreNote(id)
     local targetTable = isNote and notesRead or booksRead
-    
-    if targetTable[obj.recordId] then 
-        ui.showMessage("(Already read) " .. utils.getBookName(obj.recordId))
+    if targetTable[id] then 
+        ui.showMessage("(Already read) " .. utils.getBookName(id))
         return 
     end 
-
-    targetTable[obj.recordId] = core.getSimulationTime()
-    ui.showMessage("Marked as read: " .. utils.getBookName(obj.recordId))
+    targetTable[id] = core.getSimulationTime()
+    ui.showMessage("Marked as read: " .. utils.getBookName(id))
     if isNote then ambient.playSound("Book Open") else
-        local skill, _ = utils.getSkillInfo(obj.recordId)
+        local skill, _ = utils.getSkillInfo(id)
         if skill then ambient.playSound("skillraise") else ambient.playSound("Book Open") end
     end
 end
@@ -59,12 +62,19 @@ return {
             lastLookedAtObj = best
         end,
         onKeyPress = function(key)
-            if key.code == input.KEY.K then
-                if input.isShiftPressed() then state.exportBooks(booksRead, utils); ambient.playSound("book page2"); ui.showMessage("Exported Tomes")
-                else activeWindow, activeMode = handler.toggleWindow({activeWindow=activeWindow, activeMode=activeMode, mode="TOMES", booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage, itemsPerPage=itemsPerPage, utils=utils}) end
-            elseif key.code == input.KEY.L then
-                if input.isShiftPressed() then state.exportLetters(notesRead, utils); ambient.playSound("book page2"); ui.showMessage("Exported Letters")
-                else activeWindow, activeMode = handler.toggleWindow({activeWindow=activeWindow, activeMode=activeMode, mode="LETTERS", booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage, itemsPerPage=itemsPerPage, utils=utils}) end
+            if key.code == input.KEY.K or key.code == input.KEY.L then
+                local mode = (key.code == input.KEY.K) and "TOMES" or "LETTERS"
+                if input.isShiftPressed() then
+                    if mode == "TOMES" then state.exportBooks(booksRead, utils) else state.exportLetters(notesRead, utils) end
+                    ambient.playSound("book page2"); ui.showMessage("Exported " .. mode)
+                else
+                    if activeMode == mode then ambient.playSound("Book Close"); if activeWindow then activeWindow:destroy() end; activeWindow, activeMode = nil, nil; I.UI.setMode(nil)
+                    else
+                        if activeWindow then activeWindow:destroy() end
+                        activeWindow, activeMode = handler.toggleWindow({activeWindow=activeWindow, activeMode=activeMode, mode=mode, booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage, itemsPerPage=itemsPerPage, utils=utils})
+                        I.UI.setMode('Interface', {windows = {}})
+                    end
+                end
             elseif activeWindow and (key.code == input.KEY.O or key.code == input.KEY.I) then
                 local win, page = handler.handlePagination(key, {activeWindow=activeWindow, activeMode=activeMode, booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage, itemsPerPage=itemsPerPage, utils=utils})
                 activeWindow = win
@@ -74,9 +84,32 @@ return {
     },
     eventHandlers = {
         BookWorm_ManualMark = markAsRead,
+        BookWorm_RemoteRead = function(data)
+            local isNote = utils.isLoreNote(data.recordId)
+            local uiMode = isNote and "Scroll" or "Book"
+            if activeWindow then activeWindow:destroy(); activeWindow, activeMode = nil, nil end
+            core.sendGlobalEvent('BookWorm_RequestRemoteObject', { recordId = data.recordId, player = self, mode = uiMode })
+        end,
+        BookWorm_OpenRemoteUI = function(data)
+            currentRemoteRecordId = data.recordId 
+            currentRemoteTarget = data.target
+            I.UI.setMode(data.mode, { target = data.target })
+        end,
         UiModeChanged = function(data)
-            if data.newMode == "Book" or data.newMode == "Scroll" then markAsRead(data.arg or lastLookedAtObj) end
-            if activeWindow and data.newMode ~= nil then ambient.playSound("Book Close"); activeWindow:destroy(); activeWindow, activeMode = nil, nil end
+            if data.newMode == "Book" or data.newMode == "Scroll" then 
+                markAsRead(data.arg or lastLookedAtObj) 
+            elseif data.newMode == nil and currentRemoteRecordId then
+                core.sendGlobalEvent('BookWorm_CleanupRemote', { 
+                    recordId = currentRemoteRecordId, 
+                    player = self,
+                    target = currentRemoteTarget 
+                })
+                currentRemoteRecordId = nil
+                currentRemoteTarget = nil
+            end
+            if activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then 
+                activeWindow:destroy(); activeWindow, activeMode = nil, nil 
+            end
         end
     },
     interfaceName = "BookWorm",
