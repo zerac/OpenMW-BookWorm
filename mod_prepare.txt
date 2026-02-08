@@ -1,0 +1,47 @@
+
+# mod pack
+I Heart Vanilla DC (Directors Cut)
+
+# openmw.log info
+
+[20:28:02.220 I] OpenMW version 0.50.0
+[20:28:02.220 I] Revision: 47d78e004b
+[20:28:02.220 I] Loading settings file: C:\Apps\OpenMW0.50.0\defaults.bin
+[20:28:02.221 I] Loading settings file: C:\Users\zerac\Documents\My Games\OpenMW/settings.cfg
+[20:28:02.222 I] Using default (English) font encoding.
+[20:28:02.223 W] No such dir: C:\Users\zerac\Documents\My Games\OpenMW/data
+[20:28:02.226 I] OSG version: 3.6.5
+[20:28:02.226 I] SDL version: 2.30.8
+[20:28:02.226 I] Loading shader settings file: C:\Users\zerac\Documents\My Games\OpenMW/shaders.yaml
+[20:28:02.420 I] OpenGL Vendor: NVIDIA Corporation
+[20:28:02.420 I] OpenGL Renderer: NVIDIA GeForce RTX 4070 Laptop GPU/PCIe/SSE2
+[20:28:02.420 I] OpenGL Version: 4.6.0 NVIDIA 591.74
+[20:28:02.420 I] Using reverse-z depth buffer
+[20:28:03.259 I] Initializing LuaUtil::LuaState without profiler
+[20:28:03.259 I] Lua version: Lua 5.1.4 (LuaJIT 2.1.0-beta3)
+
+# openmw github sources for 0.50
+https://github.com/OpenMW/openmw/tree/openmw-50
+
+# openmw 0.50 release notes
+https://github.com/OpenMW/openmw/releases/tag/openmw-0.50.0
+
+# openmw construction set
+https://openmw.readthedocs.io/en/stable/manuals/openmw-cs/
+
+# openmw lua api guide
+https://openmw.readthedocs.io/en/openmw-0.50.0/reference/lua-scripting/api.html
+https://openmw-zack.readthedocs.io/en/mwdialogue-bindings/reference/lua-scripting/api.html
+
+# openmw lua modding - crawling links
+https://modding-openmw.com/mods/tag/openmw-lua/
+
+
+########### BookWorm mod
+
+reset: luap I.BookWorm.reset()
+
+# TODO
+
+- common papers activate on-shelf message , but they should not . we dont have include letters or notes to the list ?
+
