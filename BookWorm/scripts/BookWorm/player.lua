@@ -11,24 +11,21 @@ local ui_library = require('scripts.BookWorm.ui_library')
 local scanner = require('scripts.BookWorm.scanner')
 local state = require('scripts.BookWorm.state_manager')
 local handler = require('scripts.BookWorm.input_handler')
+local invScanner = require('scripts.BookWorm.inventory_scanner') -- NEW
 
 local booksRead, notesRead = {}, {}
 local activeWindow, activeMode = nil, nil
 local lastTargetId, lastLookedAtObj = nil, nil
 local scanTimer, bookPage, notePage = 0, 1, 1
 local itemsPerPage = 20
-local currentRemoteRecordId = nil 
-local currentRemoteTarget = nil
+local currentRemoteRecordId, currentRemoteTarget = nil, nil
 
 local function markAsRead(obj)
     if not obj or obj.type ~= types.Book or utils.blacklist[obj.recordId:lower()] then return end
     local id = obj.recordId
     local isNote = utils.isLoreNote(id)
     local targetTable = isNote and notesRead or booksRead
-    if targetTable[id] then 
-        ui.showMessage("(Already read) " .. utils.getBookName(id))
-        return 
-    end 
+    if targetTable[id] then return end 
     targetTable[id] = core.getSimulationTime()
     ui.showMessage("Marked as read: " .. utils.getBookName(id))
     if isNote then ambient.playSound("Book Open") else
@@ -68,7 +65,8 @@ return {
                     if mode == "TOMES" then state.exportBooks(booksRead, utils) else state.exportLetters(notesRead, utils) end
                     ambient.playSound("book page2"); ui.showMessage("Exported " .. mode)
                 else
-                    if activeMode == mode then ambient.playSound("Book Close"); if activeWindow then activeWindow:destroy() end; activeWindow, activeMode = nil, nil; I.UI.setMode(nil)
+                    if activeMode == mode then 
+                        ambient.playSound("Book Close"); if activeWindow then activeWindow:destroy() end; activeWindow, activeMode = nil, nil; I.UI.setMode(nil)
                     else
                         if activeWindow then activeWindow:destroy() end
                         activeWindow, activeMode = handler.toggleWindow({activeWindow=activeWindow, activeMode=activeMode, mode=mode, booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage, itemsPerPage=itemsPerPage, utils=utils})
@@ -91,53 +89,29 @@ return {
             core.sendGlobalEvent('BookWorm_RequestRemoteObject', { recordId = data.recordId, player = self, mode = uiMode })
         end,
         BookWorm_OpenRemoteUI = function(data)
-            currentRemoteRecordId = data.recordId 
-            currentRemoteTarget = data.target
+            currentRemoteRecordId, currentRemoteTarget = data.recordId, data.target
             I.UI.setMode(data.mode, { target = data.target })
         end,
         UiModeChanged = function(data)
-            -- 1. Standard marking/cleanup for actual Books/Scrolls
             if data.newMode == "Book" or data.newMode == "Scroll" then 
                 markAsRead(data.arg or lastLookedAtObj) 
             elseif data.newMode == nil and currentRemoteRecordId then
-                core.sendGlobalEvent('BookWorm_CleanupRemote', { 
-                    recordId = currentRemoteRecordId, 
-                    player = self,
-                    target = currentRemoteTarget 
-                })
-                currentRemoteRecordId = nil
-                currentRemoteTarget = nil
+                core.sendGlobalEvent('BookWorm_CleanupRemote', { recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget })
+                currentRemoteRecordId, currentRemoteTarget = nil, nil
             end
 
-            -- 2. INVENTORY SCAN: Triggers on GM_Inventory -> "Interface"
-            -- Added: only trigger if activeWindow is nil to ignore our custom menus
             if data.newMode == "Interface" and activeWindow == nil then
-                local inv = types.Actor.inventory(self)
-                for _, item in ipairs(inv:getAll(types.Book)) do
-                    local id = item.recordId
-                    if not (booksRead[id] or notesRead[id] or utils.blacklist[id:lower()]) then
-                        local bookName = utils.getBookName(id)
-                        local skill, _ = utils.getSkillInfo(id)
-                        local isNote = utils.isLoreNote(id)
-
-                        if isNote then
-                            ui.showMessage("New letter in inventory: " .. bookName)
-                        elseif skill then
-                            ui.showMessage("New rare tome in inventory: " .. bookName)
-                        else
-                            ui.showMessage("New tome in inventory: " .. bookName)
-                        end
-                        break 
-                    end
-                end
+                invScanner.scan(types.Actor.inventory(self), "inventory", false, booksRead, notesRead, utils)
+            elseif data.newMode == "Container" and data.arg then
+                local obj = data.arg
+                local name = obj.type.record(obj).name or "container"
+                local label = (obj.type == types.NPC or obj.type == types.Creature) and "the corpse" or ("the " .. name)
+                invScanner.scan(types.Actor.inventory(obj), label, true, booksRead, notesRead, utils)
             end
 
-            -- 3. Cleanup custom windows if any standard menu (Map, Stats, Spells) is opened
             if activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then 
                 activeWindow:destroy(); activeWindow, activeMode = nil, nil 
             end
         end
-    },
-    interfaceName = "BookWorm",
-    interface = { reset = function() booksRead, notesRead = {}, {}; bookPage, notePage = 1, 1 end }
+    }
 }
