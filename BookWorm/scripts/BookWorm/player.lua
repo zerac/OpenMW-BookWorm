@@ -30,23 +30,14 @@ return {
             bookPage, notePage = 1, 1
         end,
         onUpdate = function(dt) 
-            -- SEAMLESS TRANSITION: If our UI is open, check if the player is trying to open Inventory or Menu
+            -- SEAMLESS TRANSITION: Detect intent to open menu/inventory while library is open
             if activeWindow then
-                -- Check if 'Inventory' or 'Game Menu' actions are pressed
                 if input.isActionPressed(input.ACTION.Inventory) or input.isActionPressed(input.ACTION.GameMenu) then
                     local targetMode = input.isActionPressed(input.ACTION.Inventory) and "Interface" or "MainMenu"
-                    
                     ambient.playSound("Book Close")
                     activeWindow:destroy()
                     activeWindow, activeMode = nil, nil
-                    
-                    -- Force the engine to the new mode immediately, skipping the "cancel" step
-                    if targetMode == "MainMenu" then
-                        I.UI.setMode("MainMenu")
-                    else
-                        -- Opening Inventory specifically
-                        I.UI.setMode("Interface")
-                    end
+                    I.UI.setMode(targetMode)
                     return 
                 end
             end
@@ -57,26 +48,26 @@ return {
             scanTimer = 0
             
             local best = scanner.findBestBook(350, 0.995)
-            if best and best.id ~= lastTargetId then
-                local id = best.recordId:lower()
-                if not (booksRead[id] or notesRead[id] or utils.blacklist[id]) then
-                    local bookName = utils.getBookName(id)
-                    local skill, _ = utils.getSkillInfo(id)
-                    local isNote = utils.isLoreNote(id)
-                    
-                    if isNote then
-                        ui.showMessage("New letter: " .. bookName)
-                        ambient.playSound("Book Open")
-                    elseif skill then
-                        ui.showMessage("New RARE tome: " .. bookName)
-                        ambient.playSound("skillraise")
-                    else
-                        ui.showMessage("New tome: " .. bookName)
-                        ambient.playSound("Book Open")
+            if best and best.container == nil then
+                if best.id ~= lastTargetId then
+                    local id = best.recordId:lower()
+                    if not (booksRead[id] or notesRead[id] or utils.blacklist[id]) then
+                        local bookName = utils.getBookName(id)
+                        local skill, _ = utils.getSkillInfo(id)
+                        if utils.isLoreNote(id) then
+                            ui.showMessage("New letter: " .. bookName)
+                            ambient.playSound("Book Open")
+                        elseif skill then
+                            ui.showMessage("New RARE tome: " .. bookName)
+                            ambient.playSound("skillraise")
+                        else
+                            ui.showMessage("New tome: " .. bookName)
+                            ambient.playSound("Book Open")
+                        end
                     end
+                    lastTargetId = best.id
                 end
-                lastTargetId = best.id
-            elseif not best then 
+            else
                 lastTargetId = nil 
             end
             lastLookedAtObj = best
@@ -115,6 +106,7 @@ return {
             local id = data.recordId:lower()
             local isNote = utils.isLoreNote(id)
             local uiMode = isNote and "Scroll" or "Book"
+            -- Manual cleanup of library before opening the book
             if activeWindow then activeWindow:destroy(); activeWindow, activeMode = nil, nil end
             core.sendGlobalEvent('BookWorm_RequestRemoteObject', { recordId = id, player = self, mode = uiMode })
         end,
@@ -123,19 +115,24 @@ return {
             I.UI.setMode(data.mode, { target = data.target })
         end,
         UiModeChanged = function(data)
-            -- Passive cleanup for unexpected mode changes
+            -- Passive cleanup for K/L library
             if activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then
                 activeWindow:destroy()
                 activeWindow, activeMode = nil, nil
             end
 
+            -- MARKING LOGIC
             if data.newMode == "Book" or data.newMode == "Scroll" then 
-                reader.mark(data.arg or lastTargetId, booksRead, notesRead, utils) 
-            elseif data.newMode == nil and currentRemoteRecordId then
+                reader.mark(data.arg or lastLookedAtObj, booksRead, notesRead, utils) 
+            
+            -- GHOST CLEANUP LOGIC: 
+            -- Triggered whenever we LEAVE a Book/Scroll mode and have a ghost pending
+            elseif currentRemoteRecordId and data.newMode ~= "Book" and data.newMode ~= "Scroll" then
                 core.sendGlobalEvent('BookWorm_CleanupRemote', { recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget })
                 currentRemoteRecordId, currentRemoteTarget = nil, nil
             end
 
+            -- SCANNING LOGIC
             if (data.newMode == "Container" or data.newMode == "Barter") and data.arg then
                 local obj = data.arg
                 local isLocked = false
