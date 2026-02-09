@@ -13,6 +13,7 @@ local state = require('scripts.BookWorm.state_manager')
 local handler = require('scripts.BookWorm.input_handler')
 local invScanner = require('scripts.BookWorm.inventory_scanner')
 local reader = require('scripts.BookWorm.reader')
+local ui_handler = require('scripts.BookWorm.ui_handler')
 
 local booksRead, notesRead = {}, {}
 local activeWindow, activeMode = nil, nil
@@ -30,7 +31,6 @@ return {
             bookPage, notePage = 1, 1
         end,
         onUpdate = function(dt) 
-            -- SEAMLESS TRANSITION: Detect intent to open menu/inventory while library is open
             if activeWindow then
                 if input.isActionPressed(input.ACTION.Inventory) or input.isActionPressed(input.ACTION.GameMenu) then
                     local targetMode = input.isActionPressed(input.ACTION.Inventory) and "Interface" or "MainMenu"
@@ -106,7 +106,6 @@ return {
             local id = data.recordId:lower()
             local isNote = utils.isLoreNote(id)
             local uiMode = isNote and "Scroll" or "Book"
-            -- Manual cleanup of library before opening the book
             if activeWindow then activeWindow:destroy(); activeWindow, activeMode = nil, nil end
             core.sendGlobalEvent('BookWorm_RequestRemoteObject', { recordId = id, player = self, mode = uiMode })
         end,
@@ -115,40 +114,17 @@ return {
             I.UI.setMode(data.mode, { target = data.target })
         end,
         UiModeChanged = function(data)
-            -- Passive cleanup for K/L library
-            if activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then
-                activeWindow:destroy()
+            local result = ui_handler.handleModeChange(data, {
+                activeWindow = activeWindow, lastLookedAtObj = lastLookedAtObj, 
+                booksRead = booksRead, notesRead = notesRead, 
+                currentRemoteRecordId = currentRemoteRecordId, currentRemoteTarget = currentRemoteTarget,
+                reader = reader, invScanner = invScanner, utils = utils, self = self
+            })
+
+            if result == "CLOSE_LIBRARY" then
                 activeWindow, activeMode = nil, nil
-            end
-
-            -- MARKING LOGIC
-            if data.newMode == "Book" or data.newMode == "Scroll" then 
-                reader.mark(data.arg or lastLookedAtObj, booksRead, notesRead, utils) 
-            
-            -- GHOST CLEANUP LOGIC: 
-            -- Triggered whenever we LEAVE a Book/Scroll mode and have a ghost pending
-            elseif currentRemoteRecordId and data.newMode ~= "Book" and data.newMode ~= "Scroll" then
-                core.sendGlobalEvent('BookWorm_CleanupRemote', { recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget })
+            elseif result == "CLEANUP_GHOST" then
                 currentRemoteRecordId, currentRemoteTarget = nil, nil
-            end
-
-            -- SCANNING LOGIC
-            if (data.newMode == "Container" or data.newMode == "Barter") and data.arg then
-                local obj = data.arg
-                local isLocked = false
-                if obj.type == types.Container then
-                    isLocked = types.Lockable.isLocked(obj)
-                end
-
-                if not isLocked then
-                    local name = obj.type.record(obj).name or (data.newMode == "Barter" and "merchant" or "container")
-                    local isCorpse = (obj.type == types.NPC or obj.type == types.Creature)
-                    local sourceLabel = isCorpse and "the corpse" or ("the " .. name)
-                    if data.newMode == "Barter" then sourceLabel = "the merchant" end
-                    invScanner.scan(types.Actor.inventory(obj), sourceLabel, true, booksRead, notesRead, utils)
-                end
-            elseif data.newMode == "Interface" and activeWindow == nil then
-                invScanner.scan(types.Actor.inventory(self), "inventory", false, booksRead, notesRead, utils)
             end
         end
     }
