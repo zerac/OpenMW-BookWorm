@@ -38,13 +38,11 @@ return {
             local best = scanner.findBestBook(350, 0.995)
             if best and best.id ~= lastTargetId then
                 local id = best.recordId
-                -- Check if not already read and not blacklisted
                 if not (booksRead[id] or notesRead[id] or utils.blacklist[id:lower()]) then
                     local bookName = utils.getBookName(id)
-                    local skill, cat = utils.getSkillInfo(id)
+                    local skill, _ = utils.getSkillInfo(id)
                     local isNote = utils.isLoreNote(id)
                     
-                    -- NEW: Specific messaging for on-shelf letters vs tomes
                     if isNote then
                         ui.showMessage("New letter: " .. bookName)
                         ambient.playSound("Book Open")
@@ -104,13 +102,19 @@ return {
                 currentRemoteRecordId, currentRemoteTarget = nil, nil
             end
 
+            -- INVENTORY, CONTAINER, AND BARTER SCAN
             if data.newMode == "Interface" and activeWindow == nil then
                 invScanner.scan(types.Actor.inventory(self), "inventory", false, booksRead, notesRead, utils)
-            elseif data.newMode == "Container" and data.arg then
+            elseif (data.newMode == "Container" or data.newMode == "Barter") and data.arg then
                 local obj = data.arg
-                local name = obj.type.record(obj).name or "container"
-                local label = (obj.type == types.NPC or obj.type == types.Creature) and "the corpse" or ("the " .. name)
-                invScanner.scan(types.Actor.inventory(obj), label, true, booksRead, notesRead, utils)
+                local name = obj.type.record(obj).name or (data.newMode == "Barter" and "merchant" or "container")
+                
+                -- Determine specific source label
+                local isCorpse = (obj.type == types.NPC or obj.type == types.Creature)
+                local sourceLabel = isCorpse and "the corpse" or ("the " .. name)
+                if data.newMode == "Barter" then sourceLabel = "the merchant" end
+                
+                invScanner.scan(types.Actor.inventory(obj), sourceLabel, true, booksRead, notesRead, utils)
             end
 
             if activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then 
