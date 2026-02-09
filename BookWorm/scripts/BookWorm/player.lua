@@ -96,6 +96,7 @@ return {
             I.UI.setMode(data.mode, { target = data.target })
         end,
         UiModeChanged = function(data)
+            -- 1. Standard marking/cleanup for actual Books/Scrolls
             if data.newMode == "Book" or data.newMode == "Scroll" then 
                 markAsRead(data.arg or lastLookedAtObj) 
             elseif data.newMode == nil and currentRemoteRecordId then
@@ -107,6 +108,31 @@ return {
                 currentRemoteRecordId = nil
                 currentRemoteTarget = nil
             end
+
+            -- 2. INVENTORY SCAN: Triggers on GM_Inventory -> "Interface"
+            -- Added: only trigger if activeWindow is nil to ignore our custom menus
+            if data.newMode == "Interface" and activeWindow == nil then
+                local inv = types.Actor.inventory(self)
+                for _, item in ipairs(inv:getAll(types.Book)) do
+                    local id = item.recordId
+                    if not (booksRead[id] or notesRead[id] or utils.blacklist[id:lower()]) then
+                        local bookName = utils.getBookName(id)
+                        local skill, _ = utils.getSkillInfo(id)
+                        local isNote = utils.isLoreNote(id)
+
+                        if isNote then
+                            ui.showMessage("New letter in inventory: " .. bookName)
+                        elseif skill then
+                            ui.showMessage("New rare tome in inventory: " .. bookName)
+                        else
+                            ui.showMessage("New tome in inventory: " .. bookName)
+                        end
+                        break 
+                    end
+                end
+            end
+
+            -- 3. Cleanup custom windows if any standard menu (Map, Stats, Spells) is opened
             if activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then 
                 activeWindow:destroy(); activeWindow, activeMode = nil, nil 
             end
