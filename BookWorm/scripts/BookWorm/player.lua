@@ -103,18 +103,25 @@ return {
             end
 
             -- INVENTORY, CONTAINER, AND BARTER SCAN
-            if data.newMode == "Interface" and activeWindow == nil then
-                invScanner.scan(types.Actor.inventory(self), "inventory", false, booksRead, notesRead, utils)
-            elseif (data.newMode == "Container" or data.newMode == "Barter") and data.arg then
+            if (data.newMode == "Container" or data.newMode == "Barter") and data.arg then
                 local obj = data.arg
-                local name = obj.type.record(obj).name or (data.newMode == "Barter" and "merchant" or "container")
                 
-                -- Determine specific source label
-                local isCorpse = (obj.type == types.NPC or obj.type == types.Creature)
-                local sourceLabel = isCorpse and "the corpse" or ("the " .. name)
-                if data.newMode == "Barter" then sourceLabel = "the merchant" end
-                
-                invScanner.scan(types.Actor.inventory(obj), sourceLabel, true, booksRead, notesRead, utils)
+                -- TARGETED CHANGE: Check for lock only if it is a container. 
+                -- Corpses (NPC/Creature) are skipped.
+                local isLocked = false
+                if obj.type == types.Container then
+                    isLocked = types.Lockable.isLocked(obj)
+                end
+
+                if not isLocked then
+                    local name = obj.type.record(obj).name or (data.newMode == "Barter" and "merchant" or "container")
+                    local isCorpse = (obj.type == types.NPC or obj.type == types.Creature)
+                    local sourceLabel = isCorpse and "the corpse" or ("the " .. name)
+                    if data.newMode == "Barter" then sourceLabel = "the merchant" end
+                    invScanner.scan(types.Actor.inventory(obj), sourceLabel, true, booksRead, notesRead, utils)
+                end
+            elseif data.newMode == "Interface" and activeWindow == nil then
+                invScanner.scan(types.Actor.inventory(self), "inventory", false, booksRead, notesRead, utils)
             end
 
             if activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then 
