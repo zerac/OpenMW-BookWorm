@@ -31,12 +31,28 @@ return {
             bookPage, notePage = 1, 1
         end,
         onUpdate = function(dt) 
-            if activeWindow then
+            -- GHOST & LIBRARY SEAMLESS TRANSITION
+            -- Detect intent to open menu/inventory while library OR ghost book is open
+            local uiMode = I.UI.getMode()
+            if activeWindow or (uiMode == "Book" or uiMode == "Scroll") and currentRemoteRecordId then
                 if input.isActionPressed(input.ACTION.Inventory) or input.isActionPressed(input.ACTION.GameMenu) then
                     local targetMode = input.isActionPressed(input.ACTION.Inventory) and "Interface" or "MainMenu"
+                    
+                    -- Cleanup Library if open
+                    if activeWindow then 
+                        activeWindow:destroy()
+                        activeWindow, activeMode = nil, nil
+                    end
+
+                    -- Cleanup Ghost if open
+                    if currentRemoteRecordId then
+                        core.sendGlobalEvent('BookWorm_CleanupRemote', { 
+                            recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget 
+                        })
+                        currentRemoteRecordId, currentRemoteTarget = nil, nil
+                    end
+
                     ambient.playSound("Book Close")
-                    activeWindow:destroy()
-                    activeWindow, activeMode = nil, nil
                     I.UI.setMode(targetMode)
                     return 
                 end
