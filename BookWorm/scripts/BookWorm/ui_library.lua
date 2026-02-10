@@ -13,6 +13,7 @@ function ui_library.createWindow(params)
     local itemsPerPage = params.itemsPerPage
     local utils = params.utils
     local mode = params.mode
+    local master = params.masterTotals -- Dynamic master list totals
     
     local contentItems = {}
     local playerName = types.Player.record(self).name or "Scholar"
@@ -83,11 +84,21 @@ function ui_library.createWindow(params)
     
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = " ", textSize = 10 }})
     if mode == "TOMES" then
-        local summaryStr = string.format("Lore: %d  Combat: %d  Magic: %d  Stealth: %d", counts.lore, counts.combat, counts.magic, counts.stealth)
+        -- Updated formatting to show current/max totals
+        local function fmt(cur, max) return string.format("%d/%d", cur, max) end
+        local summaryStr = string.format("Lore: %s  Combat: %s  Magic: %s  Stealth: %s", 
+            fmt(counts.lore, master.lore), fmt(counts.combat, master.combat), 
+            fmt(counts.magic, master.magic), fmt(counts.stealth, master.stealth))
+
         table.insert(contentItems, { type = ui.TYPE.Text, props = { text = summaryStr, textColor = utils.blackColor, font = "DefaultBold", textSize = 14 }})
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "Total Tomes: " .. totalItems, textSize = 16, textColor = utils.inkColor }})
+        
+        -- Added percentage calculation for total tomes
+        local perc = math.floor((totalItems / master.totalTomes) * 100)
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("Total Tomes: %d of %d (%d%%)", totalItems, master.totalTomes, perc), textSize = 16, textColor = utils.inkColor }})
     else
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "Total Letters: " .. totalItems, textSize = 16, textColor = utils.inkColor }})
+        -- Added percentage calculation for total letters
+        local perc = math.floor((totalItems / master.totalLetters) * 100)
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("Total Letters: %d of %d (%d%%)", totalItems, master.totalLetters, perc), textSize = 16, textColor = utils.inkColor }})
     end
 
     return ui.create({

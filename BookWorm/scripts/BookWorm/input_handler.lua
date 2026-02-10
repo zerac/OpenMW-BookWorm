@@ -23,7 +23,8 @@ function input_handler.toggleWindow(params)
         currentPage = page, 
         itemsPerPage = params.itemsPerPage, 
         utils = params.utils, 
-        mode = params.mode
+        mode = params.mode,
+        masterTotals = params.masterTotals -- Relay master list totals
     })
     return newWindow, params.mode
 end
@@ -50,7 +51,8 @@ function input_handler.handlePagination(key, params)
         currentPage = newPage, 
         itemsPerPage = params.itemsPerPage, 
         utils = params.utils, 
-        mode = params.activeMode
+        mode = params.activeMode,
+        masterTotals = params.masterTotals -- Relay master list totals
     })
     return newWin, newPage
 end

@@ -23,6 +23,7 @@ local lastTargetId, lastLookedAtObj = nil, nil
 local scanTimer, bookPage, notePage = 0, 1, 1
 local itemsPerPage = 20
 local currentRemoteRecordId, currentRemoteTarget = nil, nil
+local masterTotals = nil -- Reference totals for completion targets
 
 return {
     engineHandlers = {
@@ -31,11 +32,13 @@ return {
             local loaded = state.processLoad(data)
             booksRead, notesRead = loaded.books, loaded.notes
             bookPage, notePage = 1, 1
+            masterTotals = state.buildMasterList(utils) -- Scan game records for completion totals
         end,
         onUpdate = function(dt) 
             local uiMode = I.UI.getMode()
             local camMode = camera.getMode()
 
+            -- Seamless Menu Transitions
             if activeWindow or (uiMode == "Book" or uiMode == "Scroll") and currentRemoteRecordId then
                 if input.isActionPressed(input.ACTION.Inventory) or input.isActionPressed(input.ACTION.GameMenu) then
                     local targetMode = input.isActionPressed(input.ACTION.Inventory) and "Interface" or "MainMenu"
@@ -53,14 +56,18 @@ return {
                 end
             end
 
+            -- Shelf Scanner Logic
             if uiMode ~= nil then return end
             if camMode == camera.MODE.Vanity or camMode == camera.MODE.Static then return end
+            
+            -- PERFORMANCE: Throttle scanning if the player is not providing input
             if input.isIdle() and camMode ~= camera.MODE.Preview then return end
 
             scanTimer = scanTimer + dt
             if scanTimer < 0.25 then return end
             scanTimer = 0
             
+            -- RESTORED: Scholar's Reach set back to 250
             scanner.findBestBook(250, function(best)
                 if best and best.container == nil then
                     if best.id ~= lastTargetId then
@@ -98,16 +105,28 @@ return {
                     if activeMode == mode then 
                         ambient.playSound("Book Close")
                         if activeWindow then aux_ui.deepDestroy(activeWindow) end -- Refactored
-                        activeWindow, activeMode = nil, nil
+                        activeWindow, activeMode = nil, nil 
                         I.UI.setMode(nil)
                     else
                         if activeWindow then aux_ui.deepDestroy(activeWindow) end -- Refactored
-                        activeWindow, activeMode = handler.toggleWindow({activeWindow=activeWindow, activeMode=activeMode, mode=mode, booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage, itemsPerPage=itemsPerPage, utils=utils})
+                        activeWindow, activeMode = handler.toggleWindow({
+                            activeWindow=activeWindow, activeMode=activeMode, mode=mode, 
+                            booksRead=booksRead, notesRead=notesRead, 
+                            bookPage=bookPage, notePage=notePage, 
+                            itemsPerPage=itemsPerPage, utils=utils,
+                            masterTotals=masterTotals -- Pass completion targets to handler
+                        })
                         I.UI.setMode('Interface', {windows = {}})
                     end
                 end
             elseif activeWindow and (key.code == input.KEY.O or key.code == input.KEY.I) then
-                local win, page = handler.handlePagination(key, {activeWindow=activeWindow, activeMode=activeMode, booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage, itemsPerPage=itemsPerPage, utils=utils})
+                local win, page = handler.handlePagination(key, {
+                    activeWindow=activeWindow, activeMode=activeMode, 
+                    booksRead=booksRead, notesRead=notesRead, 
+                    bookPage=bookPage, notePage=notePage, 
+                    itemsPerPage=itemsPerPage, utils=utils,
+                    masterTotals=masterTotals -- Pass completion targets to pagination
+                })
                 activeWindow = win
                 if activeMode == "TOMES" then bookPage = page else notePage = page end
             end
