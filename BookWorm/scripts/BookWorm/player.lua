@@ -35,6 +35,7 @@ return {
             local uiMode = I.UI.getMode()
             local camMode = camera.getMode()
 
+            -- Seamless Menu Transitions
             if activeWindow or (uiMode == "Book" or uiMode == "Scroll") and currentRemoteRecordId then
                 if input.isActionPressed(input.ACTION.Inventory) or input.isActionPressed(input.ACTION.GameMenu) then
                     local targetMode = input.isActionPressed(input.ACTION.Inventory) and "Interface" or "MainMenu"
@@ -49,14 +50,18 @@ return {
                 end
             end
 
+            -- Shelf Scanner Logic
             if uiMode ~= nil then return end
             if camMode == camera.MODE.Vanity or camMode == camera.MODE.Static then return end
+            
+            -- PERFORMANCE: Throttle scanning if the player is not providing input
+            if input.isIdle() and camMode ~= camera.MODE.Preview then return end
 
             scanTimer = scanTimer + dt
             if scanTimer < 0.25 then return end
             scanTimer = 0
             
-            -- Call the async scanner
+            -- RESTORED: Scholar's Reach set back to 250
             scanner.findBestBook(250, function(best)
                 if best and best.container == nil then
                     if best.id ~= lastTargetId then
