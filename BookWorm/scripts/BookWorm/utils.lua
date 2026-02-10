@@ -23,6 +23,8 @@ utils.blacklist = {
     ["bk_a1_1_caiuspackage"] = true, -- Package for Caius Cosades
     ["bk_a1_1_caiusorders"] = true,  -- Caius' Initial Orders
     ["char_gen_sheet"] = true,       -- Census and Excise Office Papers
+    ["char_gen_papers"] = true,      -- Release Information
+    ["chargen statssheet"] = true,   -- Stats papers (breaking game if taken as ghost)
     
     -- Common Duplicate Notes
     ["sc_messenger_note"] = true,
@@ -42,7 +44,7 @@ utils.skillCategories = {
 
 function utils.getBookName(id)
     local record = types.Book.record(id)
-    return record and record.name or "Untitled Document: " .. id
+    return record and record.name or "Unknown Tome: " .. id
 end
 
 function utils.getSkillInfo(id)
@@ -66,10 +68,8 @@ end
 function utils.isLoreNote(id)
     if utils.blacklist[id:lower()] then return false end
     local record = types.Book.record(id)
-    if not record then return false end
     
-    -- Lore Notes are scrolls/papers (isScroll = true) without magic enchantments.
-    return record.isScroll and (record.enchant == nil)
+    return record and record.isScroll and (record.enchant == nil)
 end
 
 return utils
