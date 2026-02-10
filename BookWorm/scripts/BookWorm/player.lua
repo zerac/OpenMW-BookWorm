@@ -56,7 +56,7 @@ return {
             if scanTimer < 0.25 then return end
             scanTimer = 0
             
-            -- ASYNC FLOW: Pass the notification logic as a callback
+            -- Call the async scanner
             scanner.findBestBook(250, function(best)
                 if best and best.container == nil then
                     if best.id ~= lastTargetId then
