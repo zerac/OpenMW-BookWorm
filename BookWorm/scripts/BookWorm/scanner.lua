@@ -2,36 +2,29 @@ local camera = require('openmw.camera')
 local util = require('openmw.util')
 local nearby = require('openmw.nearby')
 local types = require('openmw.types')
+local async = require('openmw.async')
 
 local scanner = {}
 
-function scanner.getLookVector()
-    local p = camera.getPitch()
-    local y = camera.getYaw()
-    local cosP = math.cos(p)
-    return util.vector3(math.sin(y) * cosP, math.cos(y) * cosP, math.sin(-p))
-end
-
-function scanner.findBestBook(maxDist, dotThreshold)
+function scanner.findBestBook(maxDist, callback)
     local camPos = camera.getPosition()
-    local lookDir = scanner.getLookVector()
-    local bestObj = nil
-    local maxDot = -1
+    local lookDir = camera.viewportToWorldVector(util.vector2(0.5, 0.5))
+    local camDist = camera.getThirdPersonDistance()
+    local effectiveMax = maxDist + camDist
+    local rayEnd = camPos + (lookDir * effectiveMax)
 
-    for _, obj in ipairs(nearby.items) do
-        if obj.type == types.Book then
-            -- The scanner now sees all Book types.
-            -- Filtering logic is handled by the player/utils script.
-            local objDir = (obj.position - camPos):normalize()
-            local dot = objDir:dot(lookDir)
-            local dist = (obj.position - camPos):length()
-            
-            if dot > dotThreshold and dist < maxDist and dot > maxDot then
-                bestObj = obj; maxDot = dot
+    -- Use the Async version to avoid the "input events only" error
+    nearby.asyncCastRenderingRay(
+        async:callback(function(result)
+            if result.hit and result.hitObject and result.hitObject.type == types.Book then
+                callback(result.hitObject)
+            else
+                callback(nil)
             end
-        end
-    end
-    return bestObj
+        end),
+        camPos,
+        rayEnd
+    )
 end
 
 return scanner
