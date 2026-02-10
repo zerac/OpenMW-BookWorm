@@ -21,6 +21,7 @@ function ui_library.createWindow(params)
     local sortedData = {}
     local counts = { combat = 0, magic = 0, stealth = 0, lore = 0 }
     
+    -- 1. Build list and collect timestamps for (NEW) logic
     local timestamps = {}
     for id, ts in pairs(dataMap) do 
         local _, cat = utils.getSkillInfo(id)
@@ -29,9 +30,11 @@ function ui_library.createWindow(params)
         table.insert(timestamps, ts)
     end
     
+    -- 2. Identify the 5 most recently read items using simulationTime
     table.sort(timestamps, function(a, b) return a > b end)
     local newThreshold = timestamps[math.min(5, #timestamps)] or 0
     
+    -- 3. Alphabetical sort for UI list
     table.sort(sortedData, function(a, b) return a.name < b.name end)
     
     local totalItems = #sortedData
@@ -53,6 +56,7 @@ function ui_library.createWindow(params)
         local normalColor = utils.getSkillColor(category)
         local hoverColor = util.color.rgb(0.8, 0.6, 0.1) 
         
+        -- Apply "(NEW) " Prefix text without special coloring
         local isNew = (entry.ts >= newThreshold and entry.ts > 0)
         local prefix = isNew and "(NEW) " or ""
 
