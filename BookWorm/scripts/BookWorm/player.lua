@@ -13,6 +13,7 @@ local state = require('scripts.BookWorm.state_manager')
 local handler = require('scripts.BookWorm.input_handler')
 local invScanner = require('scripts.BookWorm.inventory_scanner')
 local reader = require('scripts.BookWorm.reader')
+local ui_handler = require('scripts.BookWorm.ui_handler')
 
 local booksRead, notesRead = {}, {}
 local activeWindow, activeMode = nil, nil
@@ -30,32 +31,56 @@ return {
             bookPage, notePage = 1, 1
         end,
         onUpdate = function(dt) 
+            local uiMode = I.UI.getMode()
+            if activeWindow or (uiMode == "Book" or uiMode == "Scroll") and currentRemoteRecordId then
+                if input.isActionPressed(input.ACTION.Inventory) or input.isActionPressed(input.ACTION.GameMenu) then
+                    local targetMode = input.isActionPressed(input.ACTION.Inventory) and "Interface" or "MainMenu"
+                    
+                    if activeWindow then 
+                        activeWindow:destroy()
+                        activeWindow, activeMode = nil, nil
+                    end
+
+                    if currentRemoteRecordId then
+                        core.sendGlobalEvent('BookWorm_CleanupRemote', { 
+                            recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget 
+                        })
+                        currentRemoteRecordId, currentRemoteTarget = nil, nil
+                    end
+
+                    ambient.playSound("Book Close")
+                    I.UI.setMode(targetMode)
+                    return 
+                end
+            end
+
             if I.UI.getMode() ~= nil then return end
             scanTimer = scanTimer + dt
             if scanTimer < 0.25 then return end
             scanTimer = 0
             
             local best = scanner.findBestBook(350, 0.995)
-            if best and best.id ~= lastTargetId then
-                local id = best.recordId
-                if not (booksRead[id] or notesRead[id] or utils.blacklist[id:lower()]) then
-                    local bookName = utils.getBookName(id)
-                    local skill, _ = utils.getSkillInfo(id)
-                    local isNote = utils.isLoreNote(id)
-                    
-                    if isNote then
-                        ui.showMessage("New letter: " .. bookName)
-                        ambient.playSound("Book Open")
-                    elseif skill then
-                        ui.showMessage("New RARE tome: " .. bookName)
-                        ambient.playSound("skillraise")
-                    else
-                        ui.showMessage("New tome: " .. bookName)
-                        ambient.playSound("Book Open")
+            if best and best.container == nil then
+                if best.id ~= lastTargetId then
+                    local id = best.recordId:lower()
+                    -- Trackable Guard: Prevents notifications for enchanted scrolls on shelves
+                    if utils.isTrackable(id) and not (booksRead[id] or notesRead[id]) then
+                        local bookName = utils.getBookName(id)
+                        local skill, _ = utils.getSkillInfo(id)
+                        if utils.isLoreNote(id) then
+                            ui.showMessage("New letter: " .. bookName)
+                            ambient.playSound("Book Open")
+                        elseif skill then
+                            ui.showMessage("New RARE tome: " .. bookName)
+                            ambient.playSound("skillraise")
+                        else
+                            ui.showMessage("New tome: " .. bookName)
+                            ambient.playSound("Book Open")
+                        end
                     end
+                    lastTargetId = best.id
                 end
-                lastTargetId = best.id
-            elseif not best then 
+            else
                 lastTargetId = nil 
             end
             lastLookedAtObj = best
@@ -64,7 +89,13 @@ return {
             if key.code == input.KEY.K or key.code == input.KEY.L then
                 local mode = (key.code == input.KEY.K) and "TOMES" or "LETTERS"
                 if input.isShiftPressed() then
-                    if mode == "TOMES" then state.exportBooks(booksRead, utils) else state.exportLetters(notesRead, utils) end
+                    if mode == "TOMES" then 
+                        state.exportBooks(booksRead, utils)
+                        ui.showMessage("Exported Tomes to Log")
+                    else 
+                        state.exportLetters(notesRead, utils)
+                        ui.showMessage("Exported Letters to Log")
+                    end
                     ambient.playSound("book page2")
                 else
                     if activeMode == mode then 
@@ -85,40 +116,28 @@ return {
     eventHandlers = {
         BookWorm_ManualMark = function(obj) reader.mark(obj, booksRead, notesRead, utils) end,
         BookWorm_RemoteRead = function(data)
-            local isNote = utils.isLoreNote(data.recordId)
+            local id = data.recordId:lower()
+            local isNote = utils.isLoreNote(id)
             local uiMode = isNote and "Scroll" or "Book"
             if activeWindow then activeWindow:destroy(); activeWindow, activeMode = nil, nil end
-            core.sendGlobalEvent('BookWorm_RequestRemoteObject', { recordId = data.recordId, player = self, mode = uiMode })
+            core.sendGlobalEvent('BookWorm_RequestRemoteObject', { recordId = id, player = self, mode = uiMode })
         end,
         BookWorm_OpenRemoteUI = function(data)
-            currentRemoteRecordId, currentRemoteTarget = data.recordId, data.target
+            currentRemoteRecordId, currentRemoteTarget = data.recordId:lower(), data.target
             I.UI.setMode(data.mode, { target = data.target })
         end,
         UiModeChanged = function(data)
-            if data.newMode == "Book" or data.newMode == "Scroll" then 
-                reader.mark(data.arg or lastLookedAtObj, booksRead, notesRead, utils) 
-            elseif data.newMode == nil and currentRemoteRecordId then
-                core.sendGlobalEvent('BookWorm_CleanupRemote', { recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget })
+            local result = ui_handler.handleModeChange(data, {
+                activeWindow = activeWindow, lastLookedAtObj = lastLookedAtObj, 
+                booksRead = booksRead, notesRead = notesRead, 
+                currentRemoteRecordId = currentRemoteRecordId, currentRemoteTarget = currentRemoteTarget,
+                reader = reader, invScanner = invScanner, utils = utils, self = self
+            })
+
+            if result == "CLOSE_LIBRARY" then
+                activeWindow, activeMode = nil, nil
+            elseif result == "CLEANUP_GHOST" then
                 currentRemoteRecordId, currentRemoteTarget = nil, nil
-            end
-
-            -- INVENTORY, CONTAINER, AND BARTER SCAN
-            if data.newMode == "Interface" and activeWindow == nil then
-                invScanner.scan(types.Actor.inventory(self), "inventory", false, booksRead, notesRead, utils)
-            elseif (data.newMode == "Container" or data.newMode == "Barter") and data.arg then
-                local obj = data.arg
-                local name = obj.type.record(obj).name or (data.newMode == "Barter" and "merchant" or "container")
-                
-                -- Determine specific source label
-                local isCorpse = (obj.type == types.NPC or obj.type == types.Creature)
-                local sourceLabel = isCorpse and "the corpse" or ("the " .. name)
-                if data.newMode == "Barter" then sourceLabel = "the merchant" end
-                
-                invScanner.scan(types.Actor.inventory(obj), sourceLabel, true, booksRead, notesRead, utils)
-            end
-
-            if activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then 
-                activeWindow:destroy(); activeWindow, activeMode = nil, nil 
             end
         end
     }

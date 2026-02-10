@@ -13,18 +13,15 @@ utils.overlayTint = util.color.rgba(1, 1, 1, 0.3)
 
 -- FILTER DATA (Quest IDs and Generic Junk)
 utils.blacklist = {
-    -- Generic Paper/Scrolls
     ["sc_paper plain"] = true, 
     ["sc_paper_plain_01"] = true,
     ["sc_note_01"] = true, 
     ["sc_scroll"] = true,
-    
-    -- Main Quest / Mandatory Items (The "Don't Read" Items)
-    ["bk_a1_1_caiuspackage"] = true, -- Package for Caius Cosades
-    ["bk_a1_1_caiusorders"] = true,  -- Caius' Initial Orders
-    ["char_gen_sheet"] = true,       -- Census and Excise Office Papers
-    
-    -- Common Duplicate Notes
+    ["bk_a1_1_caiuspackage"] = true,
+    ["bk_a1_1_caiusorders"] = true,
+    ["char_gen_sheet"] = true,
+    ["char_gen_papers"] = true,
+    ["chargen statssheet"] = true,
     ["sc_messenger_note"] = true,
 }
 
@@ -40,12 +37,27 @@ utils.skillCategories = {
     sneak = "stealth", speechcraft = "stealth", handtohand = "stealth"
 }
 
+-- MASTER GUARD: Determines if the mod should acknowledge this item
+function utils.isTrackable(id)
+    local lowerId = id:lower()
+    if utils.blacklist[lowerId] then return false end
+    
+    local record = types.Book.record(lowerId)
+    if not record then return false end
+
+    -- Filter out enchanted scrolls/books
+    if record.enchant ~= nil then return false end
+
+    return true
+end
+
 function utils.getBookName(id)
     local record = types.Book.record(id)
-    return record and record.name or "Untitled Document: " .. id
+    return record and record.name or "Unknown Tome: " .. id
 end
 
 function utils.getSkillInfo(id)
+    if not utils.isTrackable(id) then return nil, "unknown" end
     local record = types.Book.record(id)
     if record and record.skill then
         local skillId = record.skill:lower()
@@ -62,14 +74,10 @@ function utils.getSkillColor(category)
     return utils.blackColor
 end
 
--- FIXED FILTER: Separates Books from Notes/Letters
 function utils.isLoreNote(id)
-    if utils.blacklist[id:lower()] then return false end
+    if not utils.isTrackable(id) then return false end
     local record = types.Book.record(id)
-    if not record then return false end
-    
-    -- Lore Notes are scrolls/papers (isScroll = true) without magic enchantments.
-    return record.isScroll and (record.enchant == nil)
+    return record and record.isScroll
 end
 
 return utils

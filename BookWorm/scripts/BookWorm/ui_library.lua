@@ -21,11 +21,17 @@ function ui_library.createWindow(params)
     local sortedData = {}
     local counts = { combat = 0, magic = 0, stealth = 0, lore = 0 }
     
-    for id, _ in pairs(dataMap) do 
+    local timestamps = {}
+    for id, ts in pairs(dataMap) do 
         local _, cat = utils.getSkillInfo(id)
         counts[cat] = (counts[cat] or 0) + 1
-        table.insert(sortedData, { id = id, name = utils.getBookName(id) }) 
+        table.insert(sortedData, { id = id, name = utils.getBookName(id), ts = ts })
+        table.insert(timestamps, ts)
     end
+    
+    table.sort(timestamps, function(a, b) return a > b end)
+    local newThreshold = timestamps[math.min(5, #timestamps)] or 0
+    
     table.sort(sortedData, function(a, b) return a.name < b.name end)
     
     local totalItems = #sortedData
@@ -47,7 +53,10 @@ function ui_library.createWindow(params)
         local normalColor = utils.getSkillColor(category)
         local hoverColor = util.color.rgb(0.8, 0.6, 0.1) 
         
-        local displayText = "- " .. entry.name
+        local isNew = (entry.ts >= newThreshold and entry.ts > 0)
+        local prefix = isNew and "(NEW) " or ""
+
+        local displayText = prefix .. "- " .. entry.name
         if mode == "TOMES" then
             local skillId, _ = utils.getSkillInfo(entry.id)
             if skillId then displayText = displayText .. " (" .. skillId:sub(1,1):upper() .. skillId:sub(2) .. ")" end
@@ -73,10 +82,8 @@ function ui_library.createWindow(params)
         local summaryStr = string.format("Lore: %d  Combat: %d  Magic: %d  Stealth: %d", counts.lore, counts.combat, counts.magic, counts.stealth)
         table.insert(contentItems, { type = ui.TYPE.Text, props = { text = summaryStr, textColor = utils.blackColor, font = "DefaultBold", textSize = 14 }})
         table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "Total Tomes: " .. totalItems, textSize = 16, textColor = utils.inkColor }})
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "[Shift + K] Export Tomes to Log", textSize = 14, textColor = utils.inkColor, font = "DefaultBold" }})
     else
         table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "Total Letters: " .. totalItems, textSize = 16, textColor = utils.inkColor }})
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "[Shift + L] Export Letters to Log", textSize = 14, textColor = utils.inkColor, font = "DefaultBold" }})
     end
 
     return ui.create({
