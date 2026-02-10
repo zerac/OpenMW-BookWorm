@@ -31,20 +31,16 @@ return {
             bookPage, notePage = 1, 1
         end,
         onUpdate = function(dt) 
-            -- GHOST & LIBRARY SEAMLESS TRANSITION
-            -- Detect intent to open menu/inventory while library OR ghost book is open
             local uiMode = I.UI.getMode()
             if activeWindow or (uiMode == "Book" or uiMode == "Scroll") and currentRemoteRecordId then
                 if input.isActionPressed(input.ACTION.Inventory) or input.isActionPressed(input.ACTION.GameMenu) then
                     local targetMode = input.isActionPressed(input.ACTION.Inventory) and "Interface" or "MainMenu"
                     
-                    -- Cleanup Library if open
                     if activeWindow then 
                         activeWindow:destroy()
                         activeWindow, activeMode = nil, nil
                     end
 
-                    -- Cleanup Ghost if open
                     if currentRemoteRecordId then
                         core.sendGlobalEvent('BookWorm_CleanupRemote', { 
                             recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget 
@@ -67,7 +63,8 @@ return {
             if best and best.container == nil then
                 if best.id ~= lastTargetId then
                     local id = best.recordId:lower()
-                    if not (booksRead[id] or notesRead[id] or utils.blacklist[id]) then
+                    -- Trackable Guard: Prevents notifications for enchanted scrolls on shelves
+                    if utils.isTrackable(id) and not (booksRead[id] or notesRead[id]) then
                         local bookName = utils.getBookName(id)
                         local skill, _ = utils.getSkillInfo(id)
                         if utils.isLoreNote(id) then

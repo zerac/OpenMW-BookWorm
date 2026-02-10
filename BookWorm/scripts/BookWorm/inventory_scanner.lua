@@ -8,12 +8,12 @@ function inventory_scanner.scan(inv, sourceLabel, playSkillSound, booksRead, not
     if not inv then return end
     for _, item in ipairs(inv:getAll(types.Book)) do
         local id = item.recordId:lower()
-        if not (booksRead[id] or notesRead[id] or utils.blacklist[id]) then
+        -- Trackable Guard: Prevents enchanted scrolls from appearing in container notifications
+        if utils.isTrackable(id) and not (booksRead[id] or notesRead[id]) then
             local bookName = utils.getBookName(id)
             local skill, _ = utils.getSkillInfo(id)
             local isNote = utils.isLoreNote(id)
             
-            -- FIX: Removed "in" from the string format to support "for sale" and "to loot"
             if isNote then
                 ui.showMessage(string.format("New letter %s: %s", sourceLabel, bookName))
             elseif skill then
