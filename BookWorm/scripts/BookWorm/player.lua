@@ -6,6 +6,7 @@ local camera = require('openmw.camera')
 local I = require('openmw.interfaces')
 local self = require('openmw.self')
 local ui = require('openmw.ui')
+local aux_ui = require('openmw_aux.ui') -- Added for deepDestroy
 
 local utils = require('scripts.BookWorm.utils')
 local ui_library = require('scripts.BookWorm.ui_library')
@@ -35,11 +36,13 @@ return {
             local uiMode = I.UI.getMode()
             local camMode = camera.getMode()
 
-            -- Seamless Menu Transitions
             if activeWindow or (uiMode == "Book" or uiMode == "Scroll") and currentRemoteRecordId then
                 if input.isActionPressed(input.ACTION.Inventory) or input.isActionPressed(input.ACTION.GameMenu) then
                     local targetMode = input.isActionPressed(input.ACTION.Inventory) and "Interface" or "MainMenu"
-                    if activeWindow then activeWindow:destroy(); activeWindow, activeMode = nil, nil end
+                    if activeWindow then 
+                        aux_ui.deepDestroy(activeWindow) -- Refactored
+                        activeWindow, activeMode = nil, nil 
+                    end
                     if currentRemoteRecordId then
                         core.sendGlobalEvent('BookWorm_CleanupRemote', { recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget })
                         currentRemoteRecordId, currentRemoteTarget = nil, nil
@@ -50,18 +53,14 @@ return {
                 end
             end
 
-            -- Shelf Scanner Logic
             if uiMode ~= nil then return end
             if camMode == camera.MODE.Vanity or camMode == camera.MODE.Static then return end
-            
-            -- PERFORMANCE: Throttle scanning if the player is not providing input
             if input.isIdle() and camMode ~= camera.MODE.Preview then return end
 
             scanTimer = scanTimer + dt
             if scanTimer < 0.25 then return end
             scanTimer = 0
             
-            -- RESTORED: Scholar's Reach set back to 250
             scanner.findBestBook(250, function(best)
                 if best and best.container == nil then
                     if best.id ~= lastTargetId then
@@ -96,9 +95,13 @@ return {
                     else state.exportLetters(notesRead, utils); ui.showMessage("Exported Letters to Log") end
                     ambient.playSound("book page2")
                 else
-                    if activeMode == mode then ambient.playSound("Book Close"); if activeWindow then activeWindow:destroy() end; activeWindow, activeMode = nil, nil; I.UI.setMode(nil)
+                    if activeMode == mode then 
+                        ambient.playSound("Book Close")
+                        if activeWindow then aux_ui.deepDestroy(activeWindow) end -- Refactored
+                        activeWindow, activeMode = nil, nil
+                        I.UI.setMode(nil)
                     else
-                        if activeWindow then activeWindow:destroy() end
+                        if activeWindow then aux_ui.deepDestroy(activeWindow) end -- Refactored
                         activeWindow, activeMode = handler.toggleWindow({activeWindow=activeWindow, activeMode=activeMode, mode=mode, booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage, itemsPerPage=itemsPerPage, utils=utils})
                         I.UI.setMode('Interface', {windows = {}})
                     end
@@ -116,7 +119,10 @@ return {
             local id = data.recordId:lower()
             local isNote = utils.isLoreNote(id)
             local uiMode = isNote and "Scroll" or "Book"
-            if activeWindow then activeWindow:destroy(); activeWindow, activeMode = nil, nil end
+            if activeWindow then 
+                aux_ui.deepDestroy(activeWindow) -- Refactored
+                activeWindow, activeMode = nil, nil 
+            end
             core.sendGlobalEvent('BookWorm_RequestRemoteObject', { recordId = id, player = self, mode = uiMode })
         end,
         BookWorm_OpenRemoteUI = function(data)

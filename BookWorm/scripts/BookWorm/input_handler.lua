@@ -1,12 +1,13 @@
 local input = require('openmw.input')
 local ambient = require('openmw.ambient')
 local ui_library = require('scripts.BookWorm.ui_library')
+local aux_ui = require('openmw_aux.ui') -- Added for deepDestroy
 
 local input_handler = {}
 
 function input_handler.toggleWindow(params)
     if params.activeWindow then 
-        params.activeWindow:destroy()
+        aux_ui.deepDestroy(params.activeWindow) -- Refactored
         ambient.playSound("Book Close")
         if params.activeMode == params.mode then 
             return nil, nil 
@@ -42,7 +43,7 @@ function input_handler.handlePagination(key, params)
         return params.activeWindow, (params.activeMode == "TOMES" and params.bookPage or params.notePage)
     end
     
-    params.activeWindow:destroy()
+    aux_ui.deepDestroy(params.activeWindow) -- Refactored
     ambient.playSound("book page2")
     local newWin = ui_library.createWindow({
         dataMap = data, 

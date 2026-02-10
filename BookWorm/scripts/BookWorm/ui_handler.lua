@@ -1,5 +1,6 @@
 local types = require('openmw.types')
 local core = require('openmw.core')
+local aux_ui = require('openmw_aux.ui') -- Added for deepDestroy
 
 local ui_handler = {}
 
@@ -8,15 +9,13 @@ function ui_handler.handleModeChange(data, state)
     
     -- 1. Close Library UI if engine switches to a non-interface mode
     if p.activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then
-        p.activeWindow:destroy()
+        aux_ui.deepDestroy(p.activeWindow) -- Refactored
         return "CLOSE_LIBRARY" 
     end
 
     -- 2. Reading Logic: Direct or via Remote UI
     if data.newMode == "Book" or data.newMode == "Scroll" then 
-        -- ENGINE PARITY: Reading breaks invisibility (matches activationhandlers.lua)
         types.Actor.activeEffects(p.self):remove('invisibility')
-        
         p.reader.mark(data.arg or p.lastLookedAtObj, p.booksRead, p.notesRead, p.utils) 
     
     -- 3. Ghost Object Cleanup
@@ -32,7 +31,6 @@ function ui_handler.handleModeChange(data, state)
     -- 4. Container & Barter Scanning
     if (data.newMode == "Container" or data.newMode == "Barter") and data.arg then
         local obj = data.arg
-        -- Safety: Don't scan contents of locked containers
         if types.Lockable.objectIsInstance(obj) and types.Lockable.isLocked(obj) then
             return
         end
@@ -50,12 +48,10 @@ function ui_handler.handleModeChange(data, state)
             sourceLabel = "in the " .. name:lower()
         end
         
-        -- Fetch inventory using proper API types
         local inv = types.Actor.objectIsInstance(obj) and types.Actor.inventory(obj) or types.Container.inventory(obj)
         p.invScanner.scan(inv, sourceLabel, true, p.booksRead, p.notesRead, p.utils)
 
     elseif data.newMode == "Interface" and p.activeWindow == nil then
-        -- Standard check when opening player inventory
         p.invScanner.scan(types.Actor.inventory(p.self), "in inventory", false, p.booksRead, p.notesRead, p.utils)
     end
 end
