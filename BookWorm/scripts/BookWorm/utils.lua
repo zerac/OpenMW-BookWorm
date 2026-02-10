@@ -37,7 +37,7 @@ utils.skillCategories = {
     sneak = "stealth", speechcraft = "stealth", handtohand = "stealth"
 }
 
--- MASTER GUARD: Determines if the mod should even acknowledge this item exists
+-- MASTER GUARD: Determines if the mod should acknowledge this item
 function utils.isTrackable(id)
     local lowerId = id:lower()
     if utils.blacklist[lowerId] then return false end
@@ -45,7 +45,7 @@ function utils.isTrackable(id)
     local record = types.Book.record(lowerId)
     if not record then return false end
 
-    -- Avoid all enchanted scrolls/items (Magic, Teleportation, etc.)
+    -- Filter out enchanted scrolls/books
     if record.enchant ~= nil then return false end
 
     return true
