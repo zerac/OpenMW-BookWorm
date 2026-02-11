@@ -1,4 +1,3 @@
--- inventory_scanner.lua
 --[[
     BookWorm for OpenMW
     Copyright (C) 2026 [zerac]
@@ -16,7 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org>.
 --]]
- 
+
 local ui = require('openmw.ui')
 local types = require('openmw.types')
 local ambient = require('openmw.ambient')
@@ -30,13 +29,15 @@ function inventory_scanner.scan(inv, sourceLabel, playSkillSound, booksRead, not
         -- Trackable Guard: Prevents enchanted scrolls from appearing in container notifications
         if utils.isTrackable(id) and not (booksRead[id] or notesRead[id]) then
             local bookName = utils.getBookName(id)
-            local skill, _ = utils.getSkillInfo(id)
+            local skillId, _ = utils.getSkillInfo(id)
             local isNote = utils.isLoreNote(id)
             
             if isNote then
                 ui.showMessage(string.format("New letter %s: %s", sourceLabel, bookName))
-            elseif skill then
-                ui.showMessage(string.format("New rare tome %s: %s", sourceLabel, bookName))
+            elseif skillId then
+                -- DYNAMIC SKILL NOTIFICATION
+                local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
+                ui.showMessage(string.format("New %s tome %s: %s", skillLabel, sourceLabel, bookName))
                 if playSkillSound then ambient.playSound("skillraise") end
             else
                 ui.showMessage(string.format("New tome %s: %s", sourceLabel, bookName))

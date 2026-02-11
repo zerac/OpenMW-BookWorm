@@ -1,4 +1,3 @@
--- player.lua
 --[[
     BookWorm for OpenMW
     Copyright (C) 2026 [zerac]
@@ -16,7 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org>.
 --]]
- 
+
 local input = require('openmw.input')
 local core = require('openmw.core')
 local I = require('openmw.interfaces')
@@ -47,12 +46,13 @@ local isSearchActive = false
 local bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
 local bookPage, notePage = 1, 1
 
--- NEW: Centralized initialization helper
+-- NEW: Helper to ensure core data is always ready for UI rendering
 local function initializeState()
     bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
     bookPage, notePage = 1, 1
     searchString = ""
     isSearchActive = false
+    -- Build master database counts (Fixes the 'master' nil value error in ui_library)
     masterTotals = state_manager.buildMasterList(utils) 
 end
 
@@ -80,7 +80,7 @@ end
 
 return {
     engineHandlers = {
-        -- FIX: Added onInit for saves that didn't previously have the mod installed
+        -- FIX: Added onInit to handle save files that existed before the mod was installed
         onInit = function()
             booksRead, notesRead = {}, {}
             initializeState()
@@ -91,7 +91,8 @@ return {
         onLoad = function(data) 
             local loaded = state_manager.processLoad(data)
             booksRead, notesRead = loaded.books, loaded.notes
-            initializeState() -- Ensure totals and session states are rebuilt
+            -- FIX: Use centralized initialization to ensure masterTotals is never nil
+            initializeState()
         end,
 
         onUpdate = function(dt) 
@@ -123,6 +124,9 @@ return {
 
             -- 2. NAVIGATION MODE
             if key.code == input.KEY.K or key.code == input.KEY.L then
+                -- CRITICAL FIX: Ensure masterTotals exists before toggleWindow is called
+                if not masterTotals then masterTotals = state_manager.buildMasterList(utils) end
+
                 local newMode = (key.code == input.KEY.K) and "TOMES" or "LETTERS"
                 if input.isShiftPressed() then
                     if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils); ui.showMessage("Exported Tomes to Log")
@@ -132,10 +136,6 @@ return {
                     isSearchActive = false
                     local targetFilter = (newMode == "TOMES" and bookFilter or noteFilter)
                     local targetPage = (newMode == "TOMES" and bookPage or notePage)
-                    
-                    -- Safety check: Ensure masterTotals exists before UI toggle
-                    if not masterTotals then masterTotals = state_manager.buildMasterList(utils) end
-
                     activeWindow, activeMode = handler.toggleWindow({
                         activeWindow=activeWindow, activeMode=activeMode, mode=newMode, 
                         booksRead=booksRead, notesRead=notesRead, bookPage=targetPage, notePage=targetPage, 
