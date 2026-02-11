@@ -1,3 +1,4 @@
+-- inventory_scanner.lua
 local ui = require('openmw.ui')
 local types = require('openmw.types')
 local ambient = require('openmw.ambient')

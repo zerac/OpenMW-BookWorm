@@ -1,57 +1,79 @@
+-- input_handler.lua
 local input = require('openmw.input')
 local ambient = require('openmw.ambient')
 local ui_library = require('scripts.BookWorm.ui_library')
+local aux_ui = require('openmw_aux.ui') 
 
 local input_handler = {}
 
+local function matchesFilter(id, name, params)
+    local searchMatch = true
+    if params.searchString and params.searchString ~= "" then
+        searchMatch = string.find(name:lower(), params.searchString:lower(), 1, true) ~= nil
+    end
+    if not searchMatch then return false end
+    local isNone = (params.activeFilter == params.utils.FILTER_NONE)
+    if isNone then return true end
+    if #params.activeFilter == 1 then
+        local uName = string.upper(name)
+        local uChar = string.upper(params.activeFilter)
+        if uName:sub(1,1) == uChar then return true end
+        if uName:sub(1, 4) == "THE " and uName:sub(5, 5) == uChar then return true end
+        if uName:sub(1, 3) == "AN " and uName:sub(4, 4) == uChar then return true end
+        if uName:sub(1, 2) == "A " and uName:sub(3, 3) == uChar then return true end
+        return false
+    else
+        local _, cat = params.utils.getSkillInfo(id)
+        return cat == params.activeFilter
+    end
+end
+
 function input_handler.toggleWindow(params)
     if params.activeWindow then 
-        params.activeWindow:destroy()
-        ambient.playSound("Book Close")
-        if params.activeMode == params.mode then 
+        if params.isJump or params.isFilterChange or params.isSearchChange then 
+            aux_ui.deepDestroy(params.activeWindow)
+        elseif params.activeMode == params.mode then 
+            aux_ui.deepDestroy(params.activeWindow)
+            ambient.playSound("Book Close") 
             return nil, nil 
+        else
+            aux_ui.deepDestroy(params.activeWindow)
+            ambient.playSound("book page2") 
         end 
+    else
+        ambient.playSound("Book Open") 
     end
-
-    ambient.playSound("Book Open")
     local data = (params.mode == "TOMES") and params.booksRead or params.notesRead
     local page = (params.mode == "TOMES") and params.bookPage or params.notePage
-    
-    local newWindow = ui_library.createWindow({
-        dataMap = data, 
-        currentPage = page, 
-        itemsPerPage = params.itemsPerPage, 
-        utils = params.utils, 
-        mode = params.mode
-    })
-    return newWindow, params.mode
+    return ui_library.createWindow({
+        dataMap = data, currentPage = page, itemsPerPage = params.itemsPerPage, 
+        utils = params.utils, mode = params.mode, masterTotals = params.masterTotals,
+        activeFilter = params.activeFilter, searchString = params.searchString,
+        isSearchActive = params.isSearchActive
+    }), params.mode
 end
 
 function input_handler.handlePagination(key, params)
     local data = (params.activeMode == "TOMES") and params.booksRead or params.notesRead
-    local count = 0; for _ in pairs(data) do count = count + 1 end
-    local maxPages = math.max(1, math.ceil(count / params.itemsPerPage))
-    
-    local newPage = (params.activeMode == "TOMES") and params.bookPage or params.notePage
-
-    if key.code == input.KEY.O and newPage < maxPages then
-        newPage = newPage + 1
-    elseif key.code == input.KEY.I and newPage > 1 then
-        newPage = newPage - 1
-    else
-        return params.activeWindow, (params.activeMode == "TOMES" and params.bookPage or params.notePage)
+    local filteredCount = 0
+    for id, _ in pairs(data) do
+        local name = params.utils.getBookName(id)
+        if matchesFilter(id, name, params) then filteredCount = filteredCount + 1 end
     end
-    
-    params.activeWindow:destroy()
-    ambient.playSound("book page2")
-    local newWin = ui_library.createWindow({
-        dataMap = data, 
-        currentPage = newPage, 
-        itemsPerPage = params.itemsPerPage, 
-        utils = params.utils, 
-        mode = params.activeMode
-    })
-    return newWin, newPage
+    local maxPages = math.max(1, math.ceil(filteredCount / params.itemsPerPage))
+    local currentPage = (params.activeMode == "TOMES") and params.bookPage or params.notePage
+    local newPage = currentPage
+    if key.code == input.KEY.O and currentPage < maxPages then newPage = currentPage + 1
+    elseif key.code == input.KEY.I and currentPage > 1 then newPage = currentPage - 1
+    else return params.activeWindow, currentPage end
+    aux_ui.deepDestroy(params.activeWindow) 
+    ambient.playSound("book page2") 
+    return ui_library.createWindow({
+        dataMap = data, currentPage = newPage, itemsPerPage = params.itemsPerPage, 
+        utils = params.utils, mode = params.activeMode, masterTotals = params.masterTotals,
+        activeFilter = params.activeFilter, searchString = params.searchString,
+        isSearchActive = params.isSearchActive
+    }), newPage
 end
 
 return input_handler

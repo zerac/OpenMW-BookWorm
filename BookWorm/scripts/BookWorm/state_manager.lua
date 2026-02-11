@@ -1,14 +1,38 @@
+-- state_manager.lua
 local core = require('openmw.core')
 local types = require('openmw.types')
 local self = require('openmw.self')
 
 local state_manager = {}
 
+-- Scans the game database for all trackable books to establish "100% completion" targets
+-- This builds the reference counts for Combat, Magic, Stealth, and Lore.
+function state_manager.buildMasterList(utils)
+    local totals = { combat = 0, magic = 0, stealth = 0, lore = 0, totalTomes = 0, totalLetters = 0 }
+    
+    for _, record in ipairs(types.Book.records) do
+        local id = record.id:lower()
+        if utils.isTrackable(id) then
+            if record.isScroll then
+                totals.totalLetters = totals.totalLetters + 1
+            else
+                totals.totalTomes = totals.totalTomes + 1
+                local _, cat = utils.getSkillInfo(id)
+                if totals[cat] ~= nil then
+                    totals[cat] = totals[cat] + 1
+                end
+            end
+        end
+    end
+    return totals
+end
+
 function state_manager.processLoad(data)
     local state = { books = {}, notes = {} }
     if data then
         local saveMarker = data.saveTimestamp or 0
         -- Normalize existing Books
+        -- MIGRATION: Convert old IDs to lowercase
         if data.booksRead then
             for id, ts in pairs(data.booksRead) do 
                 local lowerId = id:lower() -- MIGRATION: Convert old IDs to lowercase
@@ -16,6 +40,7 @@ function state_manager.processLoad(data)
             end
         end
         -- Normalize existing Notes
+        -- MIGRATION: Convert old IDs to lowercase
         if data.notesRead then
             for id, ts in pairs(data.notesRead) do 
                 local lowerId = id:lower() -- MIGRATION: Convert old IDs to lowercase

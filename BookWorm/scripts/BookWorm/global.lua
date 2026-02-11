@@ -1,3 +1,4 @@
+-- global.lua
 local world = require('openmw.world')
 local types = require('openmw.types')
 
@@ -42,7 +43,6 @@ return {
                 local currentCount = inv:countOf(recordId)
                 
                 -- 1. THE INVENTORY FIX:
-                -- Revert the 'Take' action by removing 1 item from the REAL stack.
                 if currentCount > snapshotCount then
                     local books = inv:getAll(types.Book)
                     for _, item in ipairs(books) do
@@ -57,9 +57,7 @@ return {
                     end
                 end
                 
-                -- 2. THE MEMORY FIX (Conditioned):
-                -- Only call remove if the ghost is valid AND still has a count.
-                -- In a stack merge, the ghost's count becomes 0, and calling remove() on it fails.
+                -- 2. THE MEMORY FIX:
                 if data.target and data.target:isValid() then
                     if data.target.count > 0 then
                         data.target:remove()

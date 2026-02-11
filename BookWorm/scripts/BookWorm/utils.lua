@@ -1,9 +1,13 @@
+-- utils.lua
 local types = require('openmw.types')
 local util = require('openmw.util')
 
 local utils = {}
 
--- UI COLORS
+-- NEW: Dedicated "unselected" state constant
+utils.FILTER_NONE = "UNSELECTED_FILTER_STATE"
+
+-- REVERTED: Using your original hardcoded RGB values for stability
 utils.inkColor = util.color.rgb(0.15, 0.1, 0.05)      
 utils.combatColor = util.color.rgb(0.6, 0.2, 0.1)    
 utils.magicColor = util.color.rgb(0.0, 0.35, 0.65)   
@@ -11,7 +15,6 @@ utils.stealthColor = util.color.rgb(0.1, 0.5, 0.2)
 utils.blackColor = util.color.rgb(0, 0, 0)
 utils.overlayTint = util.color.rgba(1, 1, 1, 0.3)
 
--- FILTER DATA (Quest IDs and Generic Junk)
 utils.blacklist = {
     ["sc_paper plain"] = true, 
     ["sc_paper_plain_01"] = true,
@@ -37,17 +40,12 @@ utils.skillCategories = {
     sneak = "stealth", speechcraft = "stealth", handtohand = "stealth"
 }
 
--- MASTER GUARD: Determines if the mod should acknowledge this item
 function utils.isTrackable(id)
     local lowerId = id:lower()
     if utils.blacklist[lowerId] then return false end
-    
     local record = types.Book.record(lowerId)
     if not record then return false end
-
-    -- Filter out enchanted scrolls/books
     if record.enchant ~= nil then return false end
-
     return true
 end
 
