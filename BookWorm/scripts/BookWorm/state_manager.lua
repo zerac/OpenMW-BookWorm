@@ -1,3 +1,4 @@
+-- state_manager.lua
 local core = require('openmw.core')
 local types = require('openmw.types')
 local self = require('openmw.self')

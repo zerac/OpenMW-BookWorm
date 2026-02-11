@@ -1,3 +1,4 @@
+-- ui_handler.lua
 local types = require('openmw.types')
 local core = require('openmw.core')
 local aux_ui = require('openmw_aux.ui') -- Added for deepDestroy

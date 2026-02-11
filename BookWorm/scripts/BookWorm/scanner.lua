@@ -1,3 +1,4 @@
+-- scanner.lua
 local camera = require('openmw.camera')
 local util = require('openmw.util')
 local nearby = require('openmw.nearby')

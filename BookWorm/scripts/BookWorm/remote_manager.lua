@@ -1,3 +1,4 @@
+-- remote_manager.lua
 local core = require('openmw.core')
 local ambient = require('openmw.ambient')
 local I = require('openmw.interfaces')

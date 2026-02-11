@@ -1,3 +1,4 @@
+-- scanner_controller.lua
 local ui = require('openmw.ui')
 local camera = require('openmw.camera')
 local ambient = require('openmw.ambient')

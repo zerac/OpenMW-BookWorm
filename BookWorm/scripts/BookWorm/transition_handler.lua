@@ -1,3 +1,4 @@
+-- transition_handler.lua
 local input = require('openmw.input')
 local I = require('openmw.interfaces')
 local aux_ui = require('openmw_aux.ui')
