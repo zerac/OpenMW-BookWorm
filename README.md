@@ -1,29 +1,34 @@
 # OpenMW BookWorm (Director's Cut)
 
-A modern, immersive lore-tracking and library management mod for **OpenMW 0.50+**. Designed specifically for the *I Heart Vanilla DC* mod list, BookWorm allows you to build a comprehensive digital library of every tome and letter you discover in Vvardenfell without cluttering your physical inventory.
+A modern, immersive lore-tracking and library management mod for **OpenMW 0.50+ (Revision 47d78e0)**. Designed specifically for the *I Heart Vanilla DC* mod list, BookWorm allows you to build a comprehensive digital library of every tome and letter you discover in Vvardenfell without cluttering your physical inventory.
 
 ## 🚀 Key Features
 
 *   **Remote Reading UI**: Open and read any book or letter directly from your library interface using a "Ghost Object" system.
-*   **Intelligent Inventory Reversion**: Automatically detects and reverts "Take" actions from the UI to prevent item duplication, even when interacting with existing item stacks.
-*   **Lore Scanner**: A dot-product based vision system that alerts you when looking at a "New Discovery" (unread book or rare tome) in the world.
-*   **Thematic UI**: A paginated, high-resolution interface using vanilla textures with dynamic category coloring (Combat, Magic, Stealth, and Lore).
-*   **Skill Book Identification**: Automatically highlights and categorizes books that provide skill increases.
-*   **Audio Immersion**: Integrated vanilla sound effects for opening, closing, and flipping pages, including specific cues for skill raises.
-*   **External Export**: Shift+K/L commands to export your entire reading history directly to the `openmw.log` for external reference.
+*   **Real-Time Search**: Integrated search bar in the library UI. Use **Backspace** to filter titles instantly by keywords.
+*   **Alphabetical Indexing**: Smart "The/A/An" prefix handling—*The Lusty Argonian Maid* is correctly indexed under **L**, not **T**.
+*   **Intelligent Inventory Reversion**: Automatically detects and reverts "Take" actions from the UI to prevent item duplication via inventory snapshots.
+*   **Async World Scanner**: An optimized, non-blocking raycasting system that alerts you when looking at a "New Discovery" in the world.
+*   **Thematic UI**: A paginated interface using `tx_menubook.dds` with dynamic category coloring (Combat, Magic, Stealth, and Lore).
+*   **Collection Progression**: Tracks completion percentages for each skill category based on the game's total book records.
+*   **Audio Immersion**: Seamlessly synchronized vanilla sound effects for opening, closing, and searching, with specific cues for skill raises.
+*   **External Export**: Shift+K/L commands to export your entire reading history directly to the `openmw.log`.
 
 ## 🛠 Technical Implementation (OpenMW 0.50 Lua)
 
-*   **Inventory Delta Logic**: Uses `Actor.inventory:countOf` snapshots to maintain inventory integrity during remote UI sessions.
-*   **Ghost Object Management**: Utilizes `world.createObject` to generate transient UI targets that are safely garbage-collected upon UI closure.
-*   **Stack-Safety**: Implements strict `parentContainer` and `count` validation to ensure engine merges during "Take" actions do not cause Lua state crashes.
-*   **Simulation Time Persistence**: Saves reading timestamps using `core.getSimulationTime()` for accurate cross-save lore tracking.
+*   **Async Rendering Rays**: Uses `nearby.asyncCastRenderingRay` to identify targets without impacting frame rates.
+*   **Inventory Snapshots**: Uses `Actor.inventory:countOf` to maintain data integrity during remote UI sessions.
+*   **State Encapsulation**: Modular logic architecture ensuring `player.lua` remains clean while specialized handlers manage UI, Input, and Remote objects.
+*   **Ghost Object Lifecycle**: Global-to-Local event bus manages the creation and safe deletion of transient `world.createObject` targets.
+*   **Input Capture**: Specialized `onKeyPress` handling to block engine UI keys (like Journal) during active search input.
 
 ## ⌨️ Controls
 
 *   **[ K ]**: Toggle **Tomes** Library (Books).
 *   **[ L ]**: Toggle **Letters** Library (Scrolls and Notes).
 *   **[ I ] / [ O ]**: Previous / Next Page.
+*   **[ Backspace ]**: Initiate or modify **Search**.
+*   **[ Enter ]**: Finalize search and return to navigation.
 *   **[ Shift + K/L ]**: Export collection to `openmw.log`.
 *   **[ Left Click ]**: Read a book remotely from the list.
 
@@ -31,10 +36,16 @@ A modern, immersive lore-tracking and library management mod for **OpenMW 0.50+*
 
 ```text
 scripts/BookWorm/
-├── global.lua        # Ghosting logic & inventory stack cleanup
-├── player.lua        # Event hub, scanner throttling, & UI state
-├── scanner.lua       # Dot-product target acquisition
-├── state_manager.lua # Save/Load persistence & log exporting
-├── ui_library.lua    # OpenMW.UI rendering & widget templates
-├── input_handler.lua # Window toggling & pagination logic
-└── utils.lua         # Skill mapping, color palette, & filters
+├── global.lua            # Global ghosting logic & inventory reconciliation
+├── player.lua            # Main entry point & event distribution
+├── scanner.lua           # Async raycasting & vision logic
+├── scanner_controller.lua # Throttling & scan concurrency management
+├── state_manager.lua     # Database scanning & save/load persistence
+├── ui_library.lua        # UI rendering, search visuals, & templates
+├── ui_handler.lua        # Mode transition & container scanning logic
+├── input_handler.lua     # Window toggling, filtering, & pagination
+├── remote_manager.lua    # Ghost object state & audio suppression
+├── transition_handler.lua # Seamless Menu/Inventory escape logic
+├── reader.lua            # Marking logic & trackable guards
+├── inventory_scanner.lua # Container & Barter notification logic
+└── utils.lua             # Skill categories, blacklists, & color palette
