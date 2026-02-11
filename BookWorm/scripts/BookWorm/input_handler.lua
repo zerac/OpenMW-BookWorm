@@ -8,13 +8,13 @@ local input_handler = {}
 function input_handler.toggleWindow(params)
     if params.activeWindow then 
         aux_ui.deepDestroy(params.activeWindow) -- Refactored
-        ambient.playSound("Book Close")
+        ambient.playSound("Book Close") -- Always play on manual hotkey toggle
         if params.activeMode == params.mode then 
             return nil, nil 
         end 
     end
 
-    ambient.playSound("Book Open")
+    ambient.playSound("Book Open") -- Always play on manual hotkey toggle
     local data = (params.mode == "TOMES") and params.booksRead or params.notesRead
     local page = (params.mode == "TOMES") and params.bookPage or params.notePage
     
@@ -45,7 +45,7 @@ function input_handler.handlePagination(key, params)
     end
     
     aux_ui.deepDestroy(params.activeWindow) -- Refactored
-    ambient.playSound("book page2")
+    ambient.playSound("book page2") -- Tactical page sound
     local newWin = ui_library.createWindow({
         dataMap = data, 
         currentPage = newPage, 

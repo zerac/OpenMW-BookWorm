@@ -24,6 +24,7 @@ local scanTimer, bookPage, notePage = 0, 1, 1
 local itemsPerPage = 20
 local currentRemoteRecordId, currentRemoteTarget = nil, nil
 local masterTotals = nil -- Reference totals for completion targets
+local suppressCloseSound = false -- [NEW] Flag to prevent double-audio during transitions
 
 return {
     engineHandlers = {
@@ -50,7 +51,9 @@ return {
                         core.sendGlobalEvent('BookWorm_CleanupRemote', { recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget })
                         currentRemoteRecordId, currentRemoteTarget = nil, nil
                     end
-                    ambient.playSound("Book Close")
+                    -- Only play close sound if we aren't transitioning to a remote book
+                    if not suppressCloseSound then ambient.playSound("Book Close") end -- [UPDATED]
+                    suppressCloseSound = false -- Reset flag
                     I.UI.setMode(targetMode)
                     return 
                 end
@@ -134,11 +137,31 @@ return {
     },
     eventHandlers = {
         BookWorm_ManualMark = function(obj) reader.mark(obj, booksRead, notesRead, utils) end,
+        
+        -- Handles the Alphabet Ribbon jump events
+        BookWorm_JumpToLetter = function(data)
+            if not activeWindow then return end
+            if data.mode == "TOMES" then bookPage = data.page else notePage = data.page end
+            
+            aux_ui.deepDestroy(activeWindow)
+            ambient.playSound("book page2")
+            
+            activeWindow = ui_library.createWindow({
+                dataMap = (data.mode == "TOMES") and booksRead or notesRead,
+                currentPage = data.page,
+                itemsPerPage = itemsPerPage,
+                utils = utils,
+                mode = data.mode,
+                masterTotals = masterTotals
+            })
+        end,
+
         BookWorm_RemoteRead = function(data)
             local id = data.recordId:lower()
             local isNote = utils.isLoreNote(id)
             local uiMode = isNote and "Scroll" or "Book"
             if activeWindow then 
+                suppressCloseSound = true -- [NEW] Set flag before destroying window
                 aux_ui.deepDestroy(activeWindow) -- Refactored
                 activeWindow, activeMode = nil, nil 
             end
@@ -155,8 +178,13 @@ return {
                 currentRemoteRecordId = currentRemoteRecordId, currentRemoteTarget = currentRemoteTarget,
                 reader = reader, invScanner = invScanner, utils = utils, self = self
             })
-            if result == "CLOSE_LIBRARY" then activeWindow, activeMode = nil, nil
-            elseif result == "CLEANUP_GHOST" then currentRemoteRecordId, currentRemoteTarget = nil, nil end
+            if result == "CLOSE_LIBRARY" then 
+                -- Sound logic for Esc/Menu close is handled in onUpdate via suppressCloseSound
+                activeWindow, activeMode = nil, nil
+            elseif result == "CLEANUP_GHOST" then 
+                currentRemoteRecordId, currentRemoteTarget = nil, nil 
+                suppressCloseSound = false -- Reset after ghost cleanup
+            end
         end
     }
 }
