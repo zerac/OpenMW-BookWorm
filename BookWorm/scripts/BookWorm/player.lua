@@ -24,7 +24,7 @@ local scanTimer, bookPage, notePage = 0, 1, 1
 local itemsPerPage = 20
 local currentRemoteRecordId, currentRemoteTarget = nil, nil
 local masterTotals = nil -- Reference totals for completion targets
-local suppressCloseSound = false -- [NEW] Flag to prevent double-audio during transitions
+local suppressCloseSound = false -- Flag to prevent double-audio during transitions
 
 return {
     engineHandlers = {
@@ -52,7 +52,7 @@ return {
                         currentRemoteRecordId, currentRemoteTarget = nil, nil
                     end
                     -- Only play close sound if we aren't transitioning to a remote book
-                    if not suppressCloseSound then ambient.playSound("Book Close") end -- [UPDATED]
+                    if not suppressCloseSound then ambient.playSound("Book Close") end
                     suppressCloseSound = false -- Reset flag
                     I.UI.setMode(targetMode)
                     return 
@@ -105,21 +105,19 @@ return {
                     else state.exportLetters(notesRead, utils); ui.showMessage("Exported Letters to Log") end
                     ambient.playSound("book page2")
                 else
-                    if activeMode == mode then 
-                        ambient.playSound("Book Close")
-                        if activeWindow then aux_ui.deepDestroy(activeWindow) end -- Refactored
-                        activeWindow, activeMode = nil, nil 
-                        I.UI.setMode(nil)
-                    else
-                        if activeWindow then aux_ui.deepDestroy(activeWindow) end -- Refactored
-                        activeWindow, activeMode = handler.toggleWindow({
-                            activeWindow=activeWindow, activeMode=activeMode, mode=mode, 
-                            booksRead=booksRead, notesRead=notesRead, 
-                            bookPage=bookPage, notePage=notePage, 
-                            itemsPerPage=itemsPerPage, utils=utils,
-                            masterTotals=masterTotals -- Pass completion targets to handler
-                        })
+                    -- Refactored toggle call to allow input_handler to control internal cross-fade audio
+                    activeWindow, activeMode = handler.toggleWindow({
+                        activeWindow=activeWindow, activeMode=activeMode, mode=mode, 
+                        booksRead=booksRead, notesRead=notesRead, 
+                        bookPage=bookPage, notePage=notePage, 
+                        itemsPerPage=itemsPerPage, utils=utils,
+                        masterTotals=masterTotals
+                    })
+                    
+                    if activeWindow then
                         I.UI.setMode('Interface', {windows = {}})
+                    else
+                        I.UI.setMode(nil)
                     end
                 end
             elseif activeWindow and (key.code == input.KEY.O or key.code == input.KEY.I) then
@@ -128,7 +126,7 @@ return {
                     booksRead=booksRead, notesRead=notesRead, 
                     bookPage=bookPage, notePage=notePage, 
                     itemsPerPage=itemsPerPage, utils=utils,
-                    masterTotals=masterTotals -- Pass completion targets to pagination
+                    masterTotals=masterTotals 
                 })
                 activeWindow = win
                 if activeMode == "TOMES" then bookPage = page else notePage = page end
@@ -161,7 +159,7 @@ return {
             local isNote = utils.isLoreNote(id)
             local uiMode = isNote and "Scroll" or "Book"
             if activeWindow then 
-                suppressCloseSound = true -- [NEW] Set flag before destroying window
+                suppressCloseSound = true -- Set flag before destroying window
                 aux_ui.deepDestroy(activeWindow) -- Refactored
                 activeWindow, activeMode = nil, nil 
             end
@@ -179,11 +177,10 @@ return {
                 reader = reader, invScanner = invScanner, utils = utils, self = self
             })
             if result == "CLOSE_LIBRARY" then 
-                -- Sound logic for Esc/Menu close is handled in onUpdate via suppressCloseSound
                 activeWindow, activeMode = nil, nil
             elseif result == "CLEANUP_GHOST" then 
                 currentRemoteRecordId, currentRemoteTarget = nil, nil 
-                suppressCloseSound = false -- Reset after ghost cleanup
+                suppressCloseSound = false 
             end
         end
     }

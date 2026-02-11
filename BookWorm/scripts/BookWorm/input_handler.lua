@@ -8,13 +8,21 @@ local input_handler = {}
 function input_handler.toggleWindow(params)
     if params.activeWindow then 
         aux_ui.deepDestroy(params.activeWindow) -- Refactored
-        ambient.playSound("Book Close") -- Always play on manual hotkey toggle
+        
+        -- CASE: Closing the current mode (e.g., K while K is open)
         if params.activeMode == params.mode then 
+            ambient.playSound("Book Close") -- Manual close sound
             return nil, nil 
+        else
+            -- CASE: Switching between modes (e.g., L while K is open)
+            -- We play the page-flip sound to simulate turning to a different section.
+            ambient.playSound("book page2") -- [UPDATED] Transition sound
         end 
+    else
+        -- CASE: Opening the library from a closed state
+        ambient.playSound("Book Open") -- Manual open sound
     end
 
-    ambient.playSound("Book Open") -- Always play on manual hotkey toggle
     local data = (params.mode == "TOMES") and params.booksRead or params.notesRead
     local page = (params.mode == "TOMES") and params.bookPage or params.notePage
     
