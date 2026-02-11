@@ -47,6 +47,15 @@ local isSearchActive = false
 local bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
 local bookPage, notePage = 1, 1
 
+-- NEW: Centralized initialization helper
+local function initializeState()
+    bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
+    bookPage, notePage = 1, 1
+    searchString = ""
+    isSearchActive = false
+    masterTotals = state_manager.buildMasterList(utils) 
+end
+
 -- REFRESH LOGIC
 local function refreshUI(isSearchUpdate, isFilterUpdate)
     local targetFilter = (activeMode == "TOMES" and bookFilter or noteFilter)
@@ -71,16 +80,20 @@ end
 
 return {
     engineHandlers = {
+        -- FIX: Added onInit for saves that didn't previously have the mod installed
+        onInit = function()
+            booksRead, notesRead = {}, {}
+            initializeState()
+        end,
+
         onSave = function() return { booksRead = booksRead, notesRead = notesRead, saveTimestamp = core.getSimulationTime() } end,
+        
         onLoad = function(data) 
             local loaded = state_manager.processLoad(data)
             booksRead, notesRead = loaded.books, loaded.notes
-            bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
-            bookPage, notePage = 1, 1
-            searchString = ""
-            isSearchActive = false
-            masterTotals = state_manager.buildMasterList(utils) 
+            initializeState() -- Ensure totals and session states are rebuilt
         end,
+
         onUpdate = function(dt) 
             if transition.check({ activeWindow = activeWindow, remote = remote, self = self }) then 
                 activeWindow, activeMode = nil, nil 
@@ -88,10 +101,10 @@ return {
             end
             scanner_ctrl.update(dt, { scanner = scanner, utils = utils, booksRead = booksRead, notesRead = notesRead })
         end,
+
         onKeyPress = function(key)
             -- 1. SEARCH FOCUS MODE (Input Capture)
             if activeWindow and isSearchActive then
-                -- FIXED: Use input.KEY.Enter instead of Return
                 if key.code == input.KEY.Enter then
                     isSearchActive = false
                     refreshUI(false, true)
@@ -105,7 +118,6 @@ return {
                     refreshUI(true, false)
                     ambient.playSound("book page2")
                 end
-                -- Block all other keys (like J, Escape, etc.) while searching
                 return
             end
 
@@ -120,6 +132,10 @@ return {
                     isSearchActive = false
                     local targetFilter = (newMode == "TOMES" and bookFilter or noteFilter)
                     local targetPage = (newMode == "TOMES" and bookPage or notePage)
+                    
+                    -- Safety check: Ensure masterTotals exists before UI toggle
+                    if not masterTotals then masterTotals = state_manager.buildMasterList(utils) end
+
                     activeWindow, activeMode = handler.toggleWindow({
                         activeWindow=activeWindow, activeMode=activeMode, mode=newMode, 
                         booksRead=booksRead, notesRead=notesRead, bookPage=targetPage, notePage=targetPage, 
