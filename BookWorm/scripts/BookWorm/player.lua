@@ -21,9 +21,35 @@ local scanner_ctrl = require('scripts.BookWorm.scanner_controller')
 
 local booksRead, notesRead = {}, {}
 local activeWindow, activeMode = nil, nil
-local bookPage, notePage = 1, 1
 local itemsPerPage, masterTotals = 20, nil
-local activeFilter = nil 
+local searchString = ""
+local isSearchActive = false 
+
+-- Persistent Session States
+local bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
+local bookPage, notePage = 1, 1
+
+-- REFRESH LOGIC
+local function refreshUI(isSearchUpdate, isFilterUpdate)
+    local targetFilter = (activeMode == "TOMES" and bookFilter or noteFilter)
+    local targetPage = (activeMode == "TOMES" and bookPage or notePage)
+    
+    if isSearchUpdate then
+        if activeMode == "TOMES" then bookPage = 1 else notePage = 1 end
+        targetPage = 1
+    end
+
+    activeWindow, activeMode = handler.toggleWindow({
+        activeWindow=activeWindow, activeMode=activeMode, mode=activeMode, 
+        booksRead=booksRead, notesRead=notesRead, 
+        bookPage=targetPage, notePage=targetPage, 
+        itemsPerPage=itemsPerPage, utils=utils, masterTotals=masterTotals, 
+        activeFilter=targetFilter, searchString=searchString,
+        isSearchChange = isSearchUpdate, 
+        isFilterChange = isFilterUpdate,
+        isSearchActive = isSearchActive
+    })
+end
 
 return {
     engineHandlers = {
@@ -31,8 +57,10 @@ return {
         onLoad = function(data) 
             local loaded = state_manager.processLoad(data)
             booksRead, notesRead = loaded.books, loaded.notes
+            bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
             bookPage, notePage = 1, 1
-            activeFilter = nil 
+            searchString = ""
+            isSearchActive = false
             masterTotals = state_manager.buildMasterList(utils) 
         end,
         onUpdate = function(dt) 
@@ -43,30 +71,64 @@ return {
             scanner_ctrl.update(dt, { scanner = scanner, utils = utils, booksRead = booksRead, notesRead = notesRead })
         end,
         onKeyPress = function(key)
-            if key.code == input.KEY.K or key.code == input.KEY.L then
-                local mode = (key.code == input.KEY.K) and "TOMES" or "LETTERS"
-                if input.isShiftPressed() then
-                    if mode == "TOMES" then state_manager.exportBooks(booksRead, utils); ui.showMessage("Exported Tomes to Log")
-                    else state_manager.exportLetters(notesRead, utils); ui.showMessage("Exported Letters to Log") end
+            -- 1. SEARCH FOCUS MODE (Input Capture)
+            if activeWindow and isSearchActive then
+                -- FIXED: Use input.KEY.Enter instead of Return
+                if key.code == input.KEY.Enter then
+                    isSearchActive = false
+                    refreshUI(false, true)
                     ambient.playSound("book page2")
+                elseif key.code == input.KEY.Backspace then
+                    searchString = searchString:sub(1, -2)
+                    refreshUI(true, false)
+                    ambient.playSound("book page2")
+                elseif key.symbol and key.symbol:match("[%a%d%-%_% ]") and #searchString < 30 then
+                    searchString = searchString .. key.symbol
+                    refreshUI(true, false)
+                    ambient.playSound("book page2")
+                end
+                -- Block all other keys (like J, Escape, etc.) while searching
+                return
+            end
+
+            -- 2. NAVIGATION MODE
+            if key.code == input.KEY.K or key.code == input.KEY.L then
+                local newMode = (key.code == input.KEY.K) and "TOMES" or "LETTERS"
+                if input.isShiftPressed() then
+                    if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils); ui.showMessage("Exported Tomes to Log")
+                    else state_manager.exportLetters(notesRead, utils); ui.showMessage("Exported Letters to Log") end
                 else
+                    searchString = ""
+                    isSearchActive = false
+                    local targetFilter = (newMode == "TOMES" and bookFilter or noteFilter)
+                    local targetPage = (newMode == "TOMES" and bookPage or notePage)
                     activeWindow, activeMode = handler.toggleWindow({
-                        activeWindow=activeWindow, activeMode=activeMode, mode=mode, 
-                        booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, 
-                        notePage=notePage, itemsPerPage=itemsPerPage, utils=utils, 
-                        masterTotals=masterTotals, activeFilter=activeFilter
+                        activeWindow=activeWindow, activeMode=activeMode, mode=newMode, 
+                        booksRead=booksRead, notesRead=notesRead, bookPage=targetPage, notePage=targetPage, 
+                        itemsPerPage=itemsPerPage, utils=utils, masterTotals=masterTotals, 
+                        activeFilter=targetFilter, searchString=searchString, isSearchActive = isSearchActive
                     })
                     I.UI.setMode(activeWindow and 'Interface' or nil, {windows = {}})
                 end
-            elseif activeWindow and (key.code == input.KEY.O or key.code == input.KEY.I) then
-                local win, page = handler.handlePagination(key, {
-                    activeWindow=activeWindow, activeMode=activeMode, booksRead=booksRead, 
-                    notesRead=notesRead, bookPage=bookPage, notePage=notePage, 
-                    itemsPerPage=itemsPerPage, utils=utils, masterTotals=masterTotals,
-                    activeFilter=activeFilter 
-                })
-                activeWindow = win
-                if activeMode == "TOMES" then bookPage = page else notePage = page end
+                return
+            end
+
+            if activeWindow then
+                if key.code == input.KEY.Backspace then
+                    isSearchActive = true
+                    refreshUI(false, true)
+                    ambient.playSound("book page2")
+                elseif key.code == input.KEY.O or key.code == input.KEY.I then
+                    local currentFilter = (activeMode == "TOMES" and bookFilter or noteFilter)
+                    local win, page = handler.handlePagination(key, {
+                        activeWindow=activeWindow, activeMode=activeMode, booksRead=booksRead, 
+                        notesRead=notesRead, bookPage=bookPage, notePage=notePage, 
+                        itemsPerPage=itemsPerPage, utils=utils, masterTotals=masterTotals,
+                        activeFilter=currentFilter, searchString=searchString, isSearchActive = isSearchActive
+                    })
+                    activeWindow = win
+                    if activeMode == "TOMES" then bookPage = page else notePage = page end
+                end
             end
         end
     },
@@ -80,16 +142,28 @@ return {
             remote.set(data.recordId:lower(), data.target)
             I.UI.setMode(data.mode, { target = data.target })
         end,
-        BookWorm_ChangeFilter = function(data)
-            if activeFilter == data.filter then activeFilter = nil else activeFilter = data.filter end
-            bookPage = 1 
+        BookWorm_JumpToPage = function(data)
+            if not activeWindow then return end
+            if data.mode == "TOMES" then bookPage = data.page else notePage = data.page end
+            local currentFilter = (data.mode == "TOMES" and bookFilter or noteFilter)
             activeWindow, activeMode = handler.toggleWindow({
-                activeWindow=activeWindow, activeMode=activeMode, mode=activeMode or "TOMES", 
-                booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, 
-                notePage=notePage, itemsPerPage=itemsPerPage, utils=utils, 
-                masterTotals=masterTotals, activeFilter=activeFilter,
-                isFilterChange = true 
+                activeWindow=activeWindow, activeMode=activeMode, mode=data.mode, 
+                booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage,
+                itemsPerPage=itemsPerPage, utils=utils, masterTotals=masterTotals,
+                isJump = true, activeFilter=currentFilter, searchString=searchString, isSearchActive = isSearchActive
             })
+            ambient.playSound("book page2")
+        end,
+        BookWorm_ChangeFilter = function(data)
+            if not activeMode or isSearchActive then return end
+            if activeMode == "TOMES" then
+                bookFilter = (bookFilter == data.filter) and utils.FILTER_NONE or data.filter
+                bookPage = 1
+            else
+                noteFilter = (noteFilter == data.filter) and utils.FILTER_NONE or data.filter
+                notePage = 1
+            end
+            refreshUI(false, true)
             ambient.playSound("book page2")
         end,
         UiModeChanged = function(data)

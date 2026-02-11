@@ -7,9 +7,8 @@ local core = require('openmw.core')
 local async = require('openmw.async')
 local I = require('openmw.interfaces') 
 
-local ui_library = {}
+local ui_library = {} 
 
--- Helper to check if a name matches a specific starting letter filter
 local function nameMatchesLetter(name, char)
     local upperName = string.upper(name)
     local upperChar = string.upper(char)
@@ -28,7 +27,10 @@ function ui_library.createWindow(params)
     local mode = params.mode
     local master = params.masterTotals 
     local activeFilter = params.activeFilter
+    local searchString = params.searchString or ""
+    local isSearchActive = params.isSearchActive
     
+    local isNone = (activeFilter == utils.FILTER_NONE)
     local contentItems = {}
     local playerName = types.Player.record(self).name or "Scholar"
     local titleText = string.format("--- %s'S %s ---", string.upper(playerName), mode)
@@ -38,36 +40,28 @@ function ui_library.createWindow(params)
     local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     local availableLetters = {}
 
-    -- Preliminary pass: Build full counts and find available letters from the UNFILTERED list
     for id, _ in pairs(dataMap) do
         local name = utils.getBookName(id)
         local _, cat = utils.getSkillInfo(id)
         counts[cat] = (counts[cat] or 0) + 1
-        
-        -- Check which letters have at least one book matching them
         for i = 1, #alphabet do
             local char = alphabet:sub(i, i)
-            if not availableLetters[char] and nameMatchesLetter(name, char) then
-                availableLetters[char] = true
-            end
+            if not availableLetters[char] and nameMatchesLetter(name, char) then availableLetters[char] = true end
         end
     end
 
-    -- Filter logic pass for the current view
     local timestamps = {}
     for id, ts in pairs(dataMap) do 
         local name = utils.getBookName(id)
         local _, cat = utils.getSkillInfo(id)
-        
         local match = true
-        if activeFilter then
-            if #activeFilter == 1 then -- Letter filter
-                match = nameMatchesLetter(name, activeFilter)
-            else -- Skill filter
-                match = (cat == activeFilter)
-            end
+        if not isNone then
+            if #activeFilter == 1 then match = nameMatchesLetter(name, activeFilter)
+            else match = (cat == activeFilter) end
         end
-
+        if match and searchString ~= "" then
+            match = string.find(name:lower(), searchString:lower(), 1, true) ~= nil
+        end
         if match then
             table.insert(sortedData, { id = id, name = name, ts = ts })
             table.insert(timestamps, ts)
@@ -82,47 +76,46 @@ function ui_library.createWindow(params)
     local maxPages = math.max(1, math.ceil(totalItems / itemsPerPage))
     local activePage = math.min(math.max(1, currentPage), maxPages)
 
-    -- --- UPDATED RIBBON: GRAY OUT UNAVAILABLE LETTERS ---
     local ribbonContent = {}
     local intervalSize = util.vector2(2, 2)
-    local grayColor = util.color.rgb(0.5, 0.5, 0.5) -- Faded for unavailable
-
+    local grayColor = util.color.rgb(0.5, 0.5, 0.5)
     for i = 1, #alphabet do
         local char = alphabet:sub(i, i)
         local isActive = (activeFilter == char)
         local isAvailable = availableLetters[char]
-        
-        -- Available letters are Black, unavailable are Gray
         local charColor = isAvailable and utils.blackColor or grayColor
         local charHover = isAvailable and util.color.rgb(0.8, 0.6, 0.1) or grayColor
-
         table.insert(ribbonContent, {
             type = ui.TYPE.Container,
             template = isActive and I.MWUI.templates.box or nil, 
             props = { padding = 2 },
-            content = ui.content({
-                {
-                    type = ui.TYPE.Text,
-                    props = { 
-                        text = char, 
-                        textSize = 15, 
-                        textColor = charColor, 
-                        font = "DefaultBold" 
-                    },
-                    events = {
-                        mouseClick = isAvailable and async:callback(function()
-                            self:sendEvent('BookWorm_ChangeFilter', { filter = char })
-                        end) or nil, -- Disable click for grayed out letters
-                        mouseMove = isAvailable and async:callback(function(e, l) l.props.textColor = charHover end) or nil,
-                        mouseLeave = isAvailable and async:callback(function(e, l) l.props.textColor = charColor end) or nil,
-                    }
+            content = ui.content({{
+                type = ui.TYPE.Text,
+                props = { text = char, textSize = 15, textColor = charColor, font = "DefaultBold" },
+                events = {
+                    mouseClick = (isAvailable and not isSearchActive) and async:callback(function() self:sendEvent('BookWorm_ChangeFilter', { filter = char }) end) or nil,
                 }
-            })
+            }})
         })
         if i < #alphabet then table.insert(ribbonContent, { props = { size = intervalSize } }) end
     end
 
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = titleText, textSize = 26, font = "DefaultBold", textColor = utils.inkColor }})
+    
+    -- --- IMPROVED SEARCH LABEL ---
+    local searchLabel = ""
+    local searchColor = utils.inkColor
+    if isSearchActive then
+        searchLabel = "SEARCHING (press ENTER to end): " .. searchString .. "_"
+        searchColor = util.color.rgb(0.6, 0.2, 0.1)
+    elseif searchString ~= "" then
+        -- Updated: Guidance for modification
+        searchLabel = string.format("RESULTS: '%s' (BACKSPACE TO CANCEL OR MODIFY)", searchString:upper())
+    else
+        searchLabel = "PRESS BACKSPACE TO SEARCH (avoid UI keys like J)"
+    end
+    table.insert(contentItems, { type = ui.TYPE.Text, props = { text = searchLabel, textSize = 14, textColor = searchColor, font = "DefaultBold" }})
+
     table.insert(contentItems, { type = ui.TYPE.Flex, props = { horizontal = true, arrange = ui.ALIGNMENT.Center }, content = ui.content(ribbonContent) })
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("Page %d of %d", activePage, maxPages), textSize = 14, textColor = utils.inkColor }})
     
@@ -138,47 +131,39 @@ function ui_library.createWindow(params)
         local _, category = utils.getSkillInfo(entry.id)
         local normalColor = utils.getSkillColor(category)
         local hoverColor = util.color.rgb(0.8, 0.6, 0.1)
-        
         local isNew = (entry.ts >= newThreshold and entry.ts > 0)
-        local prefix = isNew and "(NEW) " or ""
-        local displayText = prefix .. "- " .. entry.name
+        local displayText = (isNew and "(NEW) " or "") .. "- " .. entry.name
         if mode == "TOMES" then
             local skillId, _ = utils.getSkillInfo(entry.id)
             if skillId then displayText = displayText .. " (" .. skillId:sub(1,1):upper() .. skillId:sub(2) .. ")" end
         end
-
         local textProps = { text = displayText, textSize = 18, textColor = normalColor, font = "DefaultBold" }
         table.insert(contentItems, { 
             type = ui.TYPE.Text, 
             events = {
-                mouseClick = async:callback(function() self:sendEvent('BookWorm_RemoteRead', { recordId = entry.id }) end),
-                mouseMove = async:callback(function() textProps.textColor = hoverColor end),
-                mouseLeave = async:callback(function() textProps.textColor = normalColor end)
+                mouseClick = not isSearchActive and async:callback(function() self:sendEvent('BookWorm_RemoteRead', { recordId = entry.id }) end) or nil,
+                mouseMove = not isSearchActive and async:callback(function() textProps.textColor = hoverColor end) or nil,
+                mouseLeave = not isSearchActive and async:callback(function() textProps.textColor = normalColor end) or nil
             },
             props = textProps
         })
     end
-    
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = " ", textSize = 10 }})
 
     if mode == "TOMES" then
         local function createFilterBox(label, count, max, category)
             local isActive = (activeFilter == category)
-            local textColor = utils.getSkillColor(category)
             return {
                 type = ui.TYPE.Container,
                 template = isActive and I.MWUI.templates.box or nil, 
                 props = { padding = 3 },
-                content = ui.content({
-                    {
-                        type = ui.TYPE.Text,
-                        props = { text = string.format("%s: %d/%d", label, count, max), textColor = textColor, font = isActive and "DefaultBold" or "Default", textSize = 14 },
-                        events = { mouseClick = async:callback(function() self:sendEvent('BookWorm_ChangeFilter', { filter = category }) end) }
-                    }
-                })
+                content = ui.content({{
+                    type = ui.TYPE.Text,
+                    props = { text = string.format("%s: %d/%d", label, count, max), textColor = utils.getSkillColor(category), font = isActive and "DefaultBold" or "Default", textSize = 14 },
+                    events = { mouseClick = not isSearchActive and async:callback(function() self:sendEvent('BookWorm_ChangeFilter', { filter = category }) end) or nil }
+                }})
             }
         end
-
         table.insert(contentItems, {
             type = ui.TYPE.Flex,
             props = { horizontal = true, arrange = ui.ALIGNMENT.Center },
@@ -192,17 +177,19 @@ function ui_library.createWindow(params)
                 createFilterBox("Stealth", counts.stealth, master.stealth, "stealth")
             })
         })
-
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "Click on tome type or letter to filter list", textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4), font = "Default" } })
-
-        local perc = math.floor((totalItems / (activeFilter and #activeFilter > 1 and master[activeFilter] or master.totalTomes)) * 100)
-        local footerLabel = (activeFilter and #activeFilter > 1) and (activeFilter:sub(1,1):upper() .. activeFilter:sub(2) .. " Tomes") or "Total Tomes"
-        if activeFilter and #activeFilter == 1 then footerLabel = "Filtered (" .. activeFilter .. ")" end
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("%s: %d of %d (%d%%)", footerLabel, totalItems, (activeFilter and #activeFilter > 1 and master[activeFilter] or master.totalTomes), perc), textSize = 16, textColor = utils.inkColor }})
+        
+        local isSkillFilter = (not isNone and #activeFilter > 1)
+        local divisor = isSkillFilter and master[activeFilter] or master.totalTomes
+        local perc = math.floor((totalItems / divisor) * 100)
+        local footerLabel = isSkillFilter and (activeFilter:sub(1,1):upper() .. activeFilter:sub(2) .. " Tomes") or "Total Tomes"
+        if not isNone and #activeFilter == 1 then footerLabel = "Filtered (" .. activeFilter .. ")" end
+        if searchString ~= "" then footerLabel = "Found" end
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("%s: %d of %d (%d%%)", footerLabel, totalItems, divisor, perc), textSize = 16, textColor = utils.inkColor }})
     else
         table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "Click on letter to filter list", textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4), font = "Default" } })
         local perc = math.floor((totalItems / master.totalLetters) * 100)
-        local footerLabel = (activeFilter and #activeFilter == 1) and ("Filtered (" .. activeFilter .. ")") or "Total Letters"
+        local footerLabel = (not isNone and #activeFilter == 1) and ("Filtered (" .. activeFilter .. ")") or "Total Letters"
+        if searchString ~= "" then footerLabel = "Found" end
         table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("%s: %d of %d (%d%%)", footerLabel, totalItems, master.totalLetters, perc), textSize = 16, textColor = utils.inkColor }})
     end
 

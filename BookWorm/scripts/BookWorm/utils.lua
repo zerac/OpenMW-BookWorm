@@ -4,6 +4,9 @@ local util = require('openmw.util')
 
 local utils = {}
 
+-- NEW: Dedicated "unselected" state constant
+utils.FILTER_NONE = "UNSELECTED_FILTER_STATE"
+
 -- REVERTED: Using your original hardcoded RGB values for stability
 utils.inkColor = util.color.rgb(0.15, 0.1, 0.05)      
 utils.combatColor = util.color.rgb(0.6, 0.2, 0.1)    
