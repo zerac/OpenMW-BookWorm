@@ -16,15 +16,14 @@ local handler = require('scripts.BookWorm.input_handler')
 local invScanner = require('scripts.BookWorm.inventory_scanner')
 local reader = require('scripts.BookWorm.reader')
 local ui_handler = require('scripts.BookWorm.ui_handler')
+local remote = require('scripts.BookWorm.remote_manager') -- Added for refactor
 
 local booksRead, notesRead = {}, {}
 local activeWindow, activeMode = nil, nil
 local lastTargetId, lastLookedAtObj = nil, nil
 local scanTimer, bookPage, notePage = 0, 1, 1
 local itemsPerPage = 20
-local currentRemoteRecordId, currentRemoteTarget = nil, nil
 local masterTotals = nil -- Reference totals for completion targets
-local suppressCloseSound = false -- Flag to prevent double-audio during transitions
 
 return {
     engineHandlers = {
@@ -38,22 +37,20 @@ return {
         onUpdate = function(dt) 
             local uiMode = I.UI.getMode()
             local camMode = camera.getMode()
+            local remoteId, remoteTarget = remote.get()
 
-            -- Seamless Menu Transitions
-            if activeWindow or (uiMode == "Book" or uiMode == "Scroll") and currentRemoteRecordId then
+            -- Seamless Menu Transitions (Refactored to use remote_manager)
+            if activeWindow or (uiMode == "Book" or uiMode == "Scroll") and remoteId then
                 if input.isActionPressed(input.ACTION.Inventory) or input.isActionPressed(input.ACTION.GameMenu) then
                     local targetMode = input.isActionPressed(input.ACTION.Inventory) and "Interface" or "MainMenu"
                     if activeWindow then 
-                        aux_ui.deepDestroy(activeWindow) -- Refactored
+                        aux_ui.deepDestroy(activeWindow)
                         activeWindow, activeMode = nil, nil 
                     end
-                    if currentRemoteRecordId then
-                        core.sendGlobalEvent('BookWorm_CleanupRemote', { recordId = currentRemoteRecordId, player = self, target = currentRemoteTarget })
-                        currentRemoteRecordId, currentRemoteTarget = nil, nil
+                    if remoteId then
+                        remote.cleanup(self)
                     end
-                    -- Only play close sound if we aren't transitioning to a remote book
-                    if not suppressCloseSound then ambient.playSound("Book Close") end
-                    suppressCloseSound = false -- Reset flag
+                    remote.handleAudio() -- Handles suppressCloseSound logic internally
                     I.UI.setMode(targetMode)
                     return 
                 end
@@ -62,15 +59,12 @@ return {
             -- Shelf Scanner Logic
             if uiMode ~= nil then return end
             if camMode == camera.MODE.Vanity or camMode == camera.MODE.Static then return end
-            
-            -- PERFORMANCE: Throttle scanning if the player is not providing input
             if input.isIdle() and camMode ~= camera.MODE.Preview then return end
 
             scanTimer = scanTimer + dt
             if scanTimer < 0.25 then return end
             scanTimer = 0
             
-            -- RESTORED: Scholar's Reach set back to 250
             scanner.findBestBook(250, function(best)
                 if best and best.container == nil then
                     if best.id ~= lastTargetId then
@@ -105,7 +99,6 @@ return {
                     else state.exportLetters(notesRead, utils); ui.showMessage("Exported Letters to Log") end
                     ambient.playSound("book page2")
                 else
-                    -- Refactored toggle call to allow input_handler to control internal cross-fade audio
                     activeWindow, activeMode = handler.toggleWindow({
                         activeWindow=activeWindow, activeMode=activeMode, mode=mode, 
                         booksRead=booksRead, notesRead=notesRead, 
@@ -113,12 +106,7 @@ return {
                         itemsPerPage=itemsPerPage, utils=utils,
                         masterTotals=masterTotals
                     })
-                    
-                    if activeWindow then
-                        I.UI.setMode('Interface', {windows = {}})
-                    else
-                        I.UI.setMode(nil)
-                    end
+                    if activeWindow then I.UI.setMode('Interface', {windows = {}}) else I.UI.setMode(nil) end
                 end
             elseif activeWindow and (key.code == input.KEY.O or key.code == input.KEY.I) then
                 local win, page = handler.handlePagination(key, {
@@ -136,14 +124,11 @@ return {
     eventHandlers = {
         BookWorm_ManualMark = function(obj) reader.mark(obj, booksRead, notesRead, utils) end,
         
-        -- Handles the Alphabet Ribbon jump events
         BookWorm_JumpToLetter = function(data)
             if not activeWindow then return end
             if data.mode == "TOMES" then bookPage = data.page else notePage = data.page end
-            
             aux_ui.deepDestroy(activeWindow)
             ambient.playSound("book page2")
-            
             activeWindow = ui_library.createWindow({
                 dataMap = (data.mode == "TOMES") and booksRead or notesRead,
                 currentPage = data.page,
@@ -156,31 +141,32 @@ return {
 
         BookWorm_RemoteRead = function(data)
             local id = data.recordId:lower()
-            local isNote = utils.isLoreNote(id)
-            local uiMode = isNote and "Scroll" or "Book"
             if activeWindow then 
-                suppressCloseSound = true -- Set flag before destroying window
-                aux_ui.deepDestroy(activeWindow) -- Refactored
+                remote.handleAudio(true) -- Force suppression for transition
+                aux_ui.deepDestroy(activeWindow)
                 activeWindow, activeMode = nil, nil 
             end
-            core.sendGlobalEvent('BookWorm_RequestRemoteObject', { recordId = id, player = self, mode = uiMode })
+            remote.request(id, self, utils.isLoreNote(id))
         end,
+
         BookWorm_OpenRemoteUI = function(data)
-            currentRemoteRecordId, currentRemoteTarget = data.recordId:lower(), data.target
+            remote.set(data.recordId:lower(), data.target)
             I.UI.setMode(data.mode, { target = data.target })
         end,
+
         UiModeChanged = function(data)
+            local rId, rTarget = remote.get()
             local result = ui_handler.handleModeChange(data, {
                 activeWindow = activeWindow, lastLookedAtObj = lastLookedAtObj, 
                 booksRead = booksRead, notesRead = notesRead, 
-                currentRemoteRecordId = currentRemoteRecordId, currentRemoteTarget = currentRemoteTarget,
+                currentRemoteRecordId = rId, currentRemoteTarget = rTarget,
                 reader = reader, invScanner = invScanner, utils = utils, self = self
             })
             if result == "CLOSE_LIBRARY" then 
                 activeWindow, activeMode = nil, nil
             elseif result == "CLEANUP_GHOST" then 
-                currentRemoteRecordId, currentRemoteTarget = nil, nil 
-                suppressCloseSound = false 
+                remote.cleanup(self)
+                remote.handleAudio(false) -- Ensure future audio plays
             end
         end
     }
