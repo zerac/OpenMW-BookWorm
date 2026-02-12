@@ -1,3 +1,4 @@
+-- scripts/BookWorm/player.lua
 --[[
     BookWorm for OpenMW
     Copyright (C) 2026 [zerac]
@@ -6,14 +7,6 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org>.
 --]]
 
 local input = require('openmw.input')
@@ -23,6 +16,8 @@ local self = require('openmw.self')
 local aux_ui = require('openmw_aux.ui')
 local ui = require('openmw.ui') 
 local ambient = require('openmw.ambient') 
+local storage = require('openmw.storage')
+local async = require('openmw.async')
 
 local utils = require('scripts.BookWorm.utils')
 local ui_library = require('scripts.BookWorm.ui_library')
@@ -38,25 +33,67 @@ local scanner_ctrl = require('scripts.BookWorm.scanner_controller')
 
 local booksRead, notesRead = {}, {}
 local activeWindow, activeMode = nil, nil
-local itemsPerPage, masterTotals = 20, nil
+local masterTotals = nil
 local searchString = ""
 local isSearchActive = false 
+
+-- SETTINGS INITIALIZATION
+local userSettings = storage.playerSection("Settings_BookWorm")
+
+-- Local config cache
+local cfg = {
+    itemsPerPage = userSettings:get("itemsPerPage"),
+    openTomesKey = userSettings:get("openTomesKey"):lower(),
+    openLettersKey = userSettings:get("openLettersKey"):lower(),
+    prevPageKey = userSettings:get("prevPageKey"):lower(),
+    nextPageKey = userSettings:get("nextPageKey"):lower()
+}
 
 -- Persistent Session States
 local bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
 local bookPage, notePage = 1, 1
 
--- NEW: Helper to ensure core data is always ready for UI rendering
+local function updateConfig()
+    cfg.itemsPerPage = userSettings:get("itemsPerPage")
+    cfg.openTomesKey = userSettings:get("openTomesKey"):lower()
+    cfg.openLettersKey = userSettings:get("openLettersKey"):lower()
+    cfg.prevPageKey = userSettings:get("prevPageKey"):lower()
+    cfg.nextPageKey = userSettings:get("nextPageKey"):lower()
+end
+
+-- FIX: Clamping logic correctly handles table counting
+local function getClampedPage(dataMap, currentPage)
+    local count = 0
+    for _ in pairs(dataMap) do count = count + 1 end
+    local max = math.max(1, math.ceil(count / cfg.itemsPerPage))
+    return math.min(currentPage, max)
+end
+
+userSettings:subscribe(async:callback(function(section, key)
+    updateConfig()
+    if key == "itemsPerPage" then
+        bookPage = getClampedPage(booksRead, bookPage)
+        notePage = getClampedPage(notesRead, notePage)
+        if activeWindow then
+            core.sendEvent('BookWorm_JumpToPage', { mode = activeMode, page = (activeMode == "TOMES" and bookPage or notePage) })
+        end
+    elseif key:match("Key$") then
+        if activeWindow then
+            aux_ui.deepDestroy(activeWindow)
+            activeWindow, activeMode = nil, nil
+            I.UI.setMode(nil)
+        end
+    end
+end))
+
 local function initializeState()
     bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
     bookPage, notePage = 1, 1
     searchString = ""
     isSearchActive = false
-    -- Build master database counts (Fixes the 'master' nil value error in ui_library)
     masterTotals = state_manager.buildMasterList(utils) 
 end
 
--- REFRESH LOGIC
 local function refreshUI(isSearchUpdate, isFilterUpdate)
     local targetFilter = (activeMode == "TOMES" and bookFilter or noteFilter)
     local targetPage = (activeMode == "TOMES" and bookPage or notePage)
@@ -70,7 +107,12 @@ local function refreshUI(isSearchUpdate, isFilterUpdate)
         activeWindow=activeWindow, activeMode=activeMode, mode=activeMode, 
         booksRead=booksRead, notesRead=notesRead, 
         bookPage=targetPage, notePage=targetPage, 
-        itemsPerPage=itemsPerPage, utils=utils, masterTotals=masterTotals, 
+        itemsPerPage=cfg.itemsPerPage,
+        openTomesKey = cfg.openTomesKey,
+        openLettersKey = cfg.openLettersKey,
+        prevPageKey = cfg.prevPageKey,
+        nextPageKey = cfg.nextPageKey,
+        utils=utils, masterTotals=masterTotals, 
         activeFilter=targetFilter, searchString=searchString,
         isSearchChange = isSearchUpdate, 
         isFilterChange = isFilterUpdate,
@@ -80,7 +122,6 @@ end
 
 return {
     engineHandlers = {
-        -- FIX: Added onInit to handle save files that existed before the mod was installed
         onInit = function()
             booksRead, notesRead = {}, {}
             initializeState()
@@ -91,7 +132,6 @@ return {
         onLoad = function(data) 
             local loaded = state_manager.processLoad(data)
             booksRead, notesRead = loaded.books, loaded.notes
-            -- FIX: Use centralized initialization to ensure masterTotals is never nil
             initializeState()
         end,
 
@@ -104,7 +144,6 @@ return {
         end,
 
         onKeyPress = function(key)
-            -- 1. SEARCH FOCUS MODE (Input Capture)
             if activeWindow and isSearchActive then
                 if key.code == input.KEY.Enter then
                     isSearchActive = false
@@ -122,15 +161,17 @@ return {
                 return
             end
 
-            -- 2. NAVIGATION MODE
-            if key.code == input.KEY.K or key.code == input.KEY.L then
-                -- CRITICAL FIX: Ensure masterTotals exists before toggleWindow is called
+            local symbol = key.symbol:lower()
+            if symbol == cfg.openTomesKey or symbol == cfg.openLettersKey then
                 if not masterTotals then masterTotals = state_manager.buildMasterList(utils) end
 
-                local newMode = (key.code == input.KEY.K) and "TOMES" or "LETTERS"
+                local newMode = (symbol == cfg.openTomesKey) and "TOMES" or "LETTERS"
                 if input.isShiftPressed() then
-                    if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils); ui.showMessage("Exported Tomes to Log")
-                    else state_manager.exportLetters(notesRead, utils); ui.showMessage("Exported Letters to Log") end
+                    -- AUDIT: Dynamic labels for exports
+                    local exportLabel = (newMode == "TOMES") and "Tomes" or "Letters"
+                    if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils) 
+                    else state_manager.exportLetters(notesRead, utils) end
+                    ui.showMessage(string.format("Exported %s to Log", exportLabel))
                 else
                     searchString = ""
                     isSearchActive = false
@@ -139,7 +180,12 @@ return {
                     activeWindow, activeMode = handler.toggleWindow({
                         activeWindow=activeWindow, activeMode=activeMode, mode=newMode, 
                         booksRead=booksRead, notesRead=notesRead, bookPage=targetPage, notePage=targetPage, 
-                        itemsPerPage=itemsPerPage, utils=utils, masterTotals=masterTotals, 
+                        itemsPerPage=cfg.itemsPerPage,
+                        openTomesKey = cfg.openTomesKey,
+                        openLettersKey = cfg.openLettersKey,
+                        prevPageKey = cfg.prevPageKey,
+                        nextPageKey = cfg.nextPageKey,
+                        utils=utils, masterTotals=masterTotals, 
                         activeFilter=targetFilter, searchString=searchString, isSearchActive = isSearchActive
                     })
                     I.UI.setMode(activeWindow and 'Interface' or nil, {windows = {}})
@@ -152,13 +198,19 @@ return {
                     isSearchActive = true
                     refreshUI(false, true)
                     ambient.playSound("book page2")
-                elseif key.code == input.KEY.O or key.code == input.KEY.I then
-                    local currentFilter = (activeMode == "TOMES" and bookFilter or noteFilter)
-                    local win, page = handler.handlePagination(key, {
+                elseif symbol == cfg.prevPageKey or symbol == cfg.nextPageKey then
+                    local mockKey = { code = (symbol == cfg.nextPageKey and input.KEY.O or input.KEY.I) }
+                    local win, page = handler.handlePagination(mockKey, {
                         activeWindow=activeWindow, activeMode=activeMode, booksRead=booksRead, 
                         notesRead=notesRead, bookPage=bookPage, notePage=notePage, 
-                        itemsPerPage=itemsPerPage, utils=utils, masterTotals=masterTotals,
-                        activeFilter=currentFilter, searchString=searchString, isSearchActive = isSearchActive
+                        itemsPerPage=cfg.itemsPerPage,
+                        openTomesKey = cfg.openTomesKey,
+                        openLettersKey = cfg.openLettersKey,
+                        prevPageKey = cfg.prevPageKey,
+                        nextPageKey = cfg.nextPageKey,
+                        utils=utils, masterTotals=masterTotals,
+                        activeFilter=(activeMode == "TOMES" and bookFilter or noteFilter), 
+                        searchString=searchString, isSearchActive = isSearchActive
                     })
                     activeWindow = win
                     if activeMode == "TOMES" then bookPage = page else notePage = page end
@@ -183,7 +235,12 @@ return {
             activeWindow, activeMode = handler.toggleWindow({
                 activeWindow=activeWindow, activeMode=activeMode, mode=data.mode, 
                 booksRead=booksRead, notesRead=notesRead, bookPage=bookPage, notePage=notePage,
-                itemsPerPage=itemsPerPage, utils=utils, masterTotals=masterTotals,
+                itemsPerPage=cfg.itemsPerPage,
+                openTomesKey = cfg.openTomesKey,
+                openLettersKey = cfg.openLettersKey,
+                prevPageKey = cfg.prevPageKey,
+                nextPageKey = cfg.nextPageKey,
+                utils=utils, masterTotals=masterTotals,
                 isJump = true, activeFilter=currentFilter, searchString=searchString, isSearchActive = isSearchActive
             })
             ambient.playSound("book page2")

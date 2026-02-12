@@ -1,4 +1,4 @@
--- input_handler.lua
+-- scripts/BookWorm/input_handler.lua
 --[[
     BookWorm for OpenMW
     Copyright (C) 2026 [zerac]
@@ -67,7 +67,12 @@ function input_handler.toggleWindow(params)
         dataMap = data, currentPage = page, itemsPerPage = params.itemsPerPage, 
         utils = params.utils, mode = params.mode, masterTotals = params.masterTotals,
         activeFilter = params.activeFilter, searchString = params.searchString,
-        isSearchActive = params.isSearchActive
+        isSearchActive = params.isSearchActive,
+        -- AUDIT: Pass dynamic keys
+        openTomesKey = params.openTomesKey,
+        openLettersKey = params.openLettersKey,
+        prevPageKey = params.prevPageKey,
+        nextPageKey = params.nextPageKey
     }), params.mode
 end
 
@@ -90,7 +95,12 @@ function input_handler.handlePagination(key, params)
         dataMap = data, currentPage = newPage, itemsPerPage = params.itemsPerPage, 
         utils = params.utils, mode = params.activeMode, masterTotals = params.masterTotals,
         activeFilter = params.activeFilter, searchString = params.searchString,
-        isSearchActive = params.isSearchActive
+        isSearchActive = params.isSearchActive,
+        -- AUDIT: Pass dynamic keys
+        openTomesKey = params.openTomesKey,
+        openLettersKey = params.openLettersKey,
+        prevPageKey = params.prevPageKey,
+        nextPageKey = params.nextPageKey
     }), newPage
 end
 

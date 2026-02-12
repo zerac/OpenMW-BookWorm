@@ -37,6 +37,25 @@ and vanilla-plus enhancements.
 [Enter]         Finalize Search (inside Library)
 [Shift + K/L]   Export current list to OpenMW Log
 
+--- SETTINGS CONFIGURATION ---
+BookWorm utilizes the native OpenMW 0.50.0 Script Settings interface. You 
+can customize your library experience without ever leaving the game. 
+
+To access these settings:
+1. Press [ESC] to open the Main Menu.
+2. Select 'Options' and navigate to the 'Scripts' tab.
+3. Select 'BookWorm' from the left-hand menu.
+
+Available Options:
+* ITEMS PER PAGE: Adjust how many titles appear in the list at once (5-50).
+* CUSTOM KEYBINDS: Reassign the Tome Library, Letter Library, and Page 
+  Navigation keys to any keys of your choice.
+
+The Library UI and export instructions will automatically update to reflect your custom keybinds.
+
+Note: Settings are stored in your global 'settings.cfg', meaning your 
+preferences persist across all characters and save files.
+
 --- INSTALLATION ---
 1. Manual Installation:
    - Extract the 'BookWorm' folder to your OpenMW 'Data Files' or mod directory.

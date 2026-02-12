@@ -13,6 +13,7 @@ A modern, immersive lore-tracking and library management mod for **OpenMW 0.50+ 
 *   **Collection Progression**: Tracks completion percentages for each skill category based on the game's total book records.
 *   **Audio Immersion**: Seamlessly synchronized vanilla sound effects for opening, closing, and searching, with specific cues for skill raises.
 *   **External Export**: Shift+K/L commands to export your entire reading history directly to the `openmw.log`.
+*   **Customizable controls**: You can set page item count and most controls in the Options - Scripts menu.
 
 ## 🛠 Technical Implementation (OpenMW 0.50 Lua)
 
@@ -22,7 +23,7 @@ A modern, immersive lore-tracking and library management mod for **OpenMW 0.50+ 
 *   **Ghost Object Lifecycle**: Global-to-Local event bus manages the creation and safe deletion of transient `world.createObject` targets.
 *   **Input Capture**: Specialized `onKeyPress` handling to block engine UI keys (like Journal) during active search input.
 
-## ⌨️ Controls
+## ⌨️ Default Controls
 
 *   **[ K ]**: Toggle **Tomes** Library (Books).
 *   **[ L ]**: Toggle **Letters** Library (Scrolls and Notes).
@@ -38,6 +39,7 @@ A modern, immersive lore-tracking and library management mod for **OpenMW 0.50+ 
 scripts/BookWorm/
 ├── global.lua            # Global ghosting logic & inventory reconciliation
 ├── player.lua            # Main entry point & event distribution
+├── settings.lua          # Allow custom controls using Options-Scripts menu
 ├── scanner.lua           # Async raycasting & vision logic
 ├── scanner_controller.lua # Throttling & scan concurrency management
 ├── state_manager.lua     # Database scanning & save/load persistence
