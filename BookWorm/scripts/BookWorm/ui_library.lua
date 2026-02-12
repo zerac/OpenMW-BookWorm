@@ -1,4 +1,14 @@
--- ui_library.lua
+-- scripts/BookWorm/ui_library.lua
+--[[
+    BookWorm for OpenMW
+    Copyright (C) 2026 [zerac]
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+--]]
+ 
 local ui = require('openmw.ui')
 local util = require('openmw.util')
 local types = require('openmw.types')
@@ -29,6 +39,13 @@ function ui_library.createWindow(params)
     local activeFilter = params.activeFilter
     local searchString = params.searchString or ""
     local isSearchActive = params.isSearchActive
+    
+    -- AUDIT: Dynamic Key Retrieval
+    local prevK = (params.prevPageKey or "I"):upper()
+    local nextK = (params.nextPageKey or "O"):upper()
+    local openTomesK = (params.openTomesKey or "K"):upper()
+    local openLettersK = (params.openLettersKey or "L"):upper()
+    local closeK = (mode == "TOMES" and openTomesK or openLettersK)
     
     local isNone = (activeFilter == utils.FILTER_NONE)
     local contentItems = {}
@@ -102,14 +119,12 @@ function ui_library.createWindow(params)
 
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = titleText, textSize = 26, font = "DefaultBold", textColor = utils.inkColor }})
     
-    -- --- IMPROVED SEARCH LABEL ---
     local searchLabel = ""
     local searchColor = utils.inkColor
     if isSearchActive then
         searchLabel = "SEARCHING (press ENTER to end): " .. searchString .. "_"
         searchColor = util.color.rgb(0.6, 0.2, 0.1)
     elseif searchString ~= "" then
-        -- Updated: Guidance for modification
         searchLabel = string.format("RESULTS: '%s' (BACKSPACE TO CANCEL OR MODIFY)", searchString:upper())
     else
         searchLabel = "PRESS BACKSPACE TO SEARCH (avoid UI keys like J)"
@@ -119,8 +134,8 @@ function ui_library.createWindow(params)
     table.insert(contentItems, { type = ui.TYPE.Flex, props = { horizontal = true, arrange = ui.ALIGNMENT.Center }, content = ui.content(ribbonContent) })
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("Page %d of %d", activePage, maxPages), textSize = 14, textColor = utils.inkColor }})
     
-    local closeKey = (mode == "TOMES") and "K" or "L"
-    local navText = (activePage > 1 and "[I] Prev  " or "") .. "  ["..closeKey.."] Close  " .. (activePage < maxPages and "  Next [O]" or "")
+    -- AUDIT: Navigation Text dynamic keys
+    local navText = (activePage > 1 and "["..prevK.."] Prev  " or "") .. "  ["..closeK.."] Close  " .. (activePage < maxPages and "  Next ["..nextK.."]" or "")
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = navText, textSize = 16, textColor = utils.inkColor, font = "DefaultBold" }})
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = " ", textSize = 10 }})
 
@@ -185,12 +200,17 @@ function ui_library.createWindow(params)
         if not isNone and #activeFilter == 1 then footerLabel = "Filtered (" .. activeFilter .. ")" end
         if searchString ~= "" then footerLabel = "Found" end
         table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("%s: %d of %d (%d%%)", footerLabel, totalItems, divisor, perc), textSize = 16, textColor = utils.inkColor }})
+        
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("Press Shift+%s to export tomes to log", openTomesK), textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4) }})
     else
         table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "Click on letter to filter list", textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4), font = "Default" } })
         local perc = math.floor((totalItems / master.totalLetters) * 100)
         local footerLabel = (not isNone and #activeFilter == 1) and ("Filtered (" .. activeFilter .. ")") or "Total Letters"
         if searchString ~= "" then footerLabel = "Found" end
         table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("%s: %d of %d (%d%%)", footerLabel, totalItems, master.totalLetters, perc), textSize = 16, textColor = utils.inkColor }})
+        
+        -- AUDIT: Added back dynamic export instruction for Letters
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("Press Shift+%s to export letters to log", openLettersK), textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4) }})
     end
 
     return ui.create({

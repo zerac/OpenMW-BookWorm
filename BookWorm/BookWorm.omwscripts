@@ -1,2 +1,3 @@
-PLAYER: scripts\BookWorm\player.lua
 GLOBAL: scripts\BookWorm\global.lua
+PLAYER: scripts\BookWorm\player.lua
+MENU: scripts\BookWorm\settings.lua

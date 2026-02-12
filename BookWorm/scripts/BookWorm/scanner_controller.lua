@@ -1,4 +1,21 @@
--- scanner_controller.lua
+--[[
+    BookWorm for OpenMW
+    Copyright (C) 2026 [zerac]
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org>.
+--]]
+
 local ui = require('openmw.ui')
 local camera = require('openmw.camera')
 local ambient = require('openmw.ambient')
@@ -43,13 +60,15 @@ function scanner_controller.update(dt, params)
                 local id = best.recordId:lower()
                 if params.utils.isTrackable(id) and not (params.booksRead[id] or params.notesRead[id]) then
                     local bookName = params.utils.getBookName(id)
-                    local skill, _ = params.utils.getSkillInfo(id)
+                    local skillId, _ = params.utils.getSkillInfo(id)
                     
                     if params.utils.isLoreNote(id) then
                         ui.showMessage("New letter: " .. bookName)
                         ambient.playSound("Book Open")
-                    elseif skill then
-                        ui.showMessage("New RARE tome: " .. bookName)
+                    elseif skillId then
+                        -- DYNAMIC SKILL NOTIFICATION
+                        local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
+                        ui.showMessage(string.format("New %s tome: %s", skillLabel, bookName))
                         ambient.playSound("skillraise")
                     else
                         ui.showMessage("New tome: " .. bookName)

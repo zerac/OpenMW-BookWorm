@@ -41,5 +41,6 @@ luac.out
 
 # utils
 *.ps1
-*.txt
+*.xxx
+
 
