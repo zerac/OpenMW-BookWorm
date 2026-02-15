@@ -1,3 +1,7 @@
+# BookWorm - The Scholar's Companion
+# Version: 1.0.0
+# Author: zerac
+
 GLOBAL: scripts\BookWorm\global.lua
 PLAYER: scripts\BookWorm\player.lua
 MENU: scripts\BookWorm\settings.lua
