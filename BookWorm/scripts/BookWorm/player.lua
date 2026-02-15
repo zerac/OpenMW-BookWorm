@@ -38,15 +38,16 @@ local searchString = ""
 local isSearchActive = false 
 
 -- SETTINGS INITIALIZATION
-local userSettings = storage.playerSection("Settings_BookWorm")
+local uiSettings = storage.playerSection("Settings_BookWorm_UI")
+local keySettings = storage.playerSection("Settings_BookWorm_Keys")
 
 -- Local config cache
 local cfg = {
-    itemsPerPage = userSettings:get("itemsPerPage"),
-    openTomesKey = userSettings:get("openTomesKey"):lower(),
-    openLettersKey = userSettings:get("openLettersKey"):lower(),
-    prevPageKey = userSettings:get("prevPageKey"):lower(),
-    nextPageKey = userSettings:get("nextPageKey"):lower()
+    itemsPerPage = uiSettings:get("itemsPerPage"),
+    openTomesKey = keySettings:get("openTomesKey"):lower(),
+    openLettersKey = keySettings:get("openLettersKey"):lower(),
+    prevPageKey = keySettings:get("prevPageKey"):lower(),
+    nextPageKey = keySettings:get("nextPageKey"):lower()
 }
 
 -- Persistent Session States
@@ -54,11 +55,11 @@ local bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
 local bookPage, notePage = 1, 1
 
 local function updateConfig()
-    cfg.itemsPerPage = userSettings:get("itemsPerPage")
-    cfg.openTomesKey = userSettings:get("openTomesKey"):lower()
-    cfg.openLettersKey = userSettings:get("openLettersKey"):lower()
-    cfg.prevPageKey = userSettings:get("prevPageKey"):lower()
-    cfg.nextPageKey = userSettings:get("nextPageKey"):lower()
+    cfg.itemsPerPage = uiSettings:get("itemsPerPage")
+    cfg.openTomesKey = keySettings:get("openTomesKey"):lower()
+    cfg.openLettersKey = keySettings:get("openLettersKey"):lower()
+    cfg.prevPageKey = keySettings:get("prevPageKey"):lower()
+    cfg.nextPageKey = keySettings:get("nextPageKey"):lower()
 end
 
 -- FIX: Clamping logic correctly handles table counting
@@ -69,7 +70,7 @@ local function getClampedPage(dataMap, currentPage)
     return math.min(currentPage, max)
 end
 
-userSettings:subscribe(async:callback(function(section, key)
+uiSettings:subscribe(async:callback(function(section, key)
     updateConfig()
     if key == "itemsPerPage" then
         bookPage = getClampedPage(booksRead, bookPage)
@@ -77,7 +78,12 @@ userSettings:subscribe(async:callback(function(section, key)
         if activeWindow then
             core.sendEvent('BookWorm_JumpToPage', { mode = activeMode, page = (activeMode == "TOMES" and bookPage or notePage) })
         end
-    elseif key:match("Key$") then
+    end
+end))
+
+keySettings:subscribe(async:callback(function(section, key)
+    updateConfig()
+    if key:match("Key$") then
         if activeWindow then
             aux_ui.deepDestroy(activeWindow)
             activeWindow, activeMode = nil, nil

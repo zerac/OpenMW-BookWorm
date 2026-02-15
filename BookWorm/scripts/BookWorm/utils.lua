@@ -44,6 +44,7 @@ utils.blacklist = {
     ["char_gen_papers"] = true,
     ["chargen statssheet"] = true,
     ["sc_messenger_note"] = true,
+    ["text_paper_roll_01"] = true,
 }
 
 utils.skillCategories = {

@@ -28,11 +28,12 @@ I.Settings.registerPage({
 })
 
 I.Settings.registerGroup({
-    key = "Settings_BookWorm",
+    key = "Settings_BookWorm_UI",
     page = "BookWorm",
     l10n = "BookWorm",
-    name = "General Controls",
+    name = "Interface Settings",
     permanentStorage = true, -- Matches vanilla requirement for MENU context
+    order = 1,
     settings = {
         {
             key = "itemsPerPage",
@@ -41,15 +42,28 @@ I.Settings.registerGroup({
             type = "number",
             default = 20,
             renderer = "number",
-            argument = { min = 5, max = 50, step = 1 }
+            argument = { min = 5, max = 50, step = 1 },
+            order = 1
         },
+    }
+})
+
+I.Settings.registerGroup({
+    key = "Settings_BookWorm_Keys",
+    page = "BookWorm",
+    l10n = "BookWorm",
+    name = "Controls",
+    permanentStorage = true, -- Matches vanilla requirement for MENU context
+    order = 2,
+    settings = {
         {
             key = "openTomesKey",
             name = "Open Tomes Library",
             description = "Key to open the Tomes menu (default: K).",
             type = "string",
             default = "k",
-            renderer = "textLine"
+            renderer = "textLine",
+            order = 1
         },
         {
             key = "openLettersKey",
@@ -57,7 +71,8 @@ I.Settings.registerGroup({
             description = "Key to open the Letters menu (default: L).",
             type = "string",
             default = "l",
-            renderer = "textLine"
+            renderer = "textLine",
+            order = 2
         },
         {
             key = "prevPageKey",
@@ -65,7 +80,8 @@ I.Settings.registerGroup({
             description = "Key for previous page (default: I).",
             type = "string",
             default = "i",
-            renderer = "textLine"
+            renderer = "textLine",
+            order = 3
         },
         {
             key = "nextPageKey",
@@ -73,7 +89,8 @@ I.Settings.registerGroup({
             description = "Key for next page (default: O).",
             type = "string",
             default = "o",
-            renderer = "textLine"
+            renderer = "textLine",
+            order = 4
         }
     }
 })
