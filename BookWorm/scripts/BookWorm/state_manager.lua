@@ -35,6 +35,7 @@ function state_manager.buildMasterList(utils)
                 totals.totalLetters = totals.totalLetters + 1
             else
                 totals.totalTomes = totals.totalTomes + 1
+                -- We use Library info here so tracking stays accurate regardless of Notif settings
                 local _, cat = utils.getSkillInfoLibrary(id)
                 if totals[cat] ~= nil then
                     totals[cat] = totals[cat] + 1
@@ -50,18 +51,18 @@ function state_manager.processLoad(data)
     if data then
         local saveMarker = data.saveTimestamp or 0
         -- Normalize existing Books
-        -- MIGRATION: Convert old IDs to lowercase
+        -- Convert old IDs to lowercase
         if data.booksRead then
             for id, ts in pairs(data.booksRead) do 
-                local lowerId = id:lower() -- MIGRATION: Convert old IDs to lowercase
+                local lowerId = id:lower() -- Convert old IDs to lowercase
                 if ts <= saveMarker then state.books[lowerId] = ts end 
             end
         end
         -- Normalize existing Notes
-        -- MIGRATION: Convert old IDs to lowercase
+        -- Convert old IDs to lowercase
         if data.notesRead then
             for id, ts in pairs(data.notesRead) do 
-                local lowerId = id:lower() -- MIGRATION: Convert old IDs to lowercase
+                local lowerId = id:lower() -- Convert old IDs to lowercase
                 if ts <= saveMarker then state.notes[lowerId] = ts end 
             end
         end

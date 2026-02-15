@@ -10,10 +10,7 @@
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org>.
+    Work should have been available at https://www.gnu.org.
 --]]
 
 local ui = require('openmw.ui')
@@ -64,15 +61,25 @@ function scanner_controller.update(dt, params)
                     
                     if params.utils.isLoreNote(id) then
                         ui.showMessage("New letter: " .. bookName)
-                        ambient.playSound("Book Open")
+                        if params.cfg.playNotificationSounds then ambient.playSound("Book Open") end
                     elseif skillId then
                         -- DYNAMIC SKILL NOTIFICATION
-                        local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
-                        ui.showMessage(string.format("New %s tome: %s", skillLabel, bookName))
-                        ambient.playSound("skillraise")
+                        local labelText = "rare tome"
+                        if params.cfg.showSkillNames then
+                            local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
+                            labelText = skillLabel .. " tome"
+                        end
+                        ui.showMessage(string.format("New %s: %s", labelText, bookName))
+                        
+                        -- Play skill sound if both master sounds and skill sounds are on
+                        if params.cfg.playNotificationSounds and params.cfg.playSkillNotificationSounds then 
+                            ambient.playSound("skillraise") 
+                        elseif params.cfg.playNotificationSounds then
+                            ambient.playSound("Book Open")
+                        end
                     else
                         ui.showMessage("New tome: " .. bookName)
-                        ambient.playSound("Book Open")
+                        if params.cfg.playNotificationSounds then ambient.playSound("Book Open") end
                     end
                 end
                 internalState.lastTargetId = best.id

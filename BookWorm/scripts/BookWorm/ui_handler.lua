@@ -71,10 +71,12 @@ function ui_handler.handleModeChange(data, state)
         end
         
         local inv = types.Actor.objectIsInstance(obj) and types.Actor.inventory(obj) or types.Container.inventory(obj)
-        p.invScanner.scan(inv, sourceLabel, true, p.booksRead, p.notesRead, p.utils)
+        -- FIXED: Removed boolean argument, passing p.cfg instead
+        p.invScanner.scan(inv, sourceLabel, p.booksRead, p.notesRead, p.utils, p.cfg)
 
     elseif data.newMode == "Interface" and p.activeWindow == nil then
-        p.invScanner.scan(types.Actor.inventory(p.self), "in inventory", false, p.booksRead, p.notesRead, p.utils)
+        -- FIXED: Removed boolean argument, passing p.cfg instead
+        p.invScanner.scan(types.Actor.inventory(p.self), "in inventory", p.booksRead, p.notesRead, p.utils, p.cfg)
     end
 end
 

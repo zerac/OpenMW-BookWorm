@@ -21,8 +21,12 @@ local ui = require('openmw.ui')
 local types = require('openmw.types')
 local ambient = require('openmw.ambient')
 local core = require('openmw.core')
+local storage = require('openmw.storage')
 
 local reader = {}
+
+-- SETTINGS ACCESS
+local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
 
 function reader.mark(obj, booksRead, notesRead, utils)
     -- Enforce Trackable Guard: Stops enchanted scrolls from being marked or messaging
@@ -32,13 +36,28 @@ function reader.mark(obj, booksRead, notesRead, utils)
     local isNote = utils.isLoreNote(id)
     local targetTable = isNote and notesRead or booksRead
     
+    local bookName = utils.getBookName(id)
+    local recognizeSkills = notifSettings:get("recognizeSkillBooks")
+    local showNames = notifSettings:get("showSkillNames")
+
     if targetTable[id] then 
-        ui.showMessage("(Already read) " .. utils.getBookName(id))
+        ui.showMessage("(Already read) " .. bookName)
         -- Sound is intentionally omitted here to prevent double-audio with engine 
         -- and redundant noise on re-reads.
     else
         targetTable[id] = core.getSimulationTime()
-        ui.showMessage("Marked as read: " .. utils.getBookName(id))
+        
+        local skillId, _ = utils.getSkillInfo(id)
+        if skillId and recognizeSkills then
+            local labelText = "rare tome"
+            if showNames then
+                local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
+                labelText = skillLabel .. " tome"
+            end
+            ui.showMessage(string.format("Marked as read: %s (%s)", bookName, labelText))
+        else
+            ui.showMessage("Marked as read: " .. bookName)
+        end
         
         -- Sound is omitted here. 
         -- If it is a skill book, the Engine (playerskillhandlers.lua) plays 'skillraise'.

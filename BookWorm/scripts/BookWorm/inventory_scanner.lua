@@ -22,7 +22,7 @@ local ambient = require('openmw.ambient')
 
 local inventory_scanner = {}
 
-function inventory_scanner.scan(inv, sourceLabel, playSkillSound, booksRead, notesRead, utils)
+function inventory_scanner.scan(inv, sourceLabel, booksRead, notesRead, utils, cfg)
     if not inv then return end
     for _, item in ipairs(inv:getAll(types.Book)) do
         local id = item.recordId:lower()
@@ -34,13 +34,25 @@ function inventory_scanner.scan(inv, sourceLabel, playSkillSound, booksRead, not
             
             if isNote then
                 ui.showMessage(string.format("New letter %s: %s", sourceLabel, bookName))
+                if cfg.playNotificationSounds then ambient.playSound("Book Open") end
             elseif skillId then
                 -- DYNAMIC SKILL NOTIFICATION
-                local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
-                ui.showMessage(string.format("New %s tome %s: %s", skillLabel, sourceLabel, bookName))
-                if playSkillSound then ambient.playSound("skillraise") end
+                local labelText = "rare tome"
+                if cfg.showSkillNames then
+                    local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
+                    labelText = skillLabel .. " tome"
+                end
+                ui.showMessage(string.format("New %s %s: %s", labelText, sourceLabel, bookName))
+                
+                -- Play skill sound if both master sounds and skill sounds are on
+                if cfg.playNotificationSounds and cfg.playSkillNotificationSounds then 
+                    ambient.playSound("skillraise") 
+                elseif cfg.playNotificationSounds then
+                    ambient.playSound("Book Open")
+                end
             else
                 ui.showMessage(string.format("New tome %s: %s", sourceLabel, bookName))
+                if cfg.playNotificationSounds then ambient.playSound("Book Open") end
             end
             return 
         end

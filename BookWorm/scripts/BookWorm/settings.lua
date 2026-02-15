@@ -104,13 +104,40 @@ I.Settings.registerGroup({
     order = 3,
     settings = {
         {
+            key = "playNotificationSounds",
+            name = "Play notification sounds",
+            description = "Toggle sound alert on new discovery message.",
+            type = "boolean",
+            default = true,
+            renderer = "checkbox",
+            order = 1
+        },
+        {
             key = "recognizeSkillBooks",
             name = "Recognize skill books",
             description = "Toggle detection of skill-increasing books (does not affect Library or Export).",
             type = "boolean",
             default = true,
             renderer = "checkbox",
-            order = 1
+            order = 2
         },
+        {
+            key = "showSkillNames",
+            name = "Show skill names",
+            description = "Toggle display of skill name in notifications for skill books (requires 'Recognize skill books' to be enabled).",
+            type = "boolean",
+            default = true,
+            renderer = "checkbox",
+            order = 3
+        },
+        {
+            key = "playSkillNotificationSounds",
+            name = "Play skill notification sounds",
+            description = "Toggle sound alert on new skill book discovery message. (requires 'Recognize skill books' and 'Play notification sounds' to be enabled).",
+            type = "boolean",
+            default = true,
+            renderer = "checkbox",
+            order = 4
+        }
     }
 })
