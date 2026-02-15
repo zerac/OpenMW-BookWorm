@@ -122,6 +122,15 @@ I.Settings.registerGroup({
             order = 2
         },
         {
+            key = "throttleInventoryNotifications",
+            name = "Throttle inventory notifications",
+            description = "Do not repeat player inventory notifications (requires 'Display notification messages').",
+            type = "boolean",
+            default = true,
+            renderer = "checkbox",
+            order = 2
+        },
+        {
             key = "playNotificationSounds",
             name = "Play notification sounds",
             description = "Toggle sound alert on new discovery.",

@@ -7,19 +7,11 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org>.
 --]]
  
 local types = require('openmw.types')
 local core = require('openmw.core')
-local aux_ui = require('openmw_aux.ui') -- Added for deepDestroy
+local aux_ui = require('openmw_aux.ui') 
 
 local ui_handler = {}
 
@@ -27,20 +19,17 @@ function ui_handler.handleModeChange(data, state)
     local p = state
     
     -- 1. Close Library UI if engine switches to a non-interface mode
-    -- This happens when player hits Esc or opens the Game Menu.
     if p.activeWindow and data.newMode ~= 'Interface' and data.newMode ~= nil then
-        aux_ui.deepDestroy(p.activeWindow) -- Refactored
+        aux_ui.deepDestroy(p.activeWindow)
         return "CLOSE_LIBRARY" 
     end
 
-    -- 2. Reading Logic: Direct or via Remote UI
-    -- Engine (omw/ui.lua) automatically plays 'book open' here.
+    -- 2. Reading Logic
     if data.newMode == "Book" or data.newMode == "Scroll" then 
         types.Actor.activeEffects(p.self):remove('invisibility')
         p.reader.mark(data.arg or p.lastLookedAtObj, p.booksRead, p.notesRead, p.utils) 
     
     -- 3. Ghost Object Cleanup
-    -- Engine (omw/ui.lua) automatically plays 'book close' when mode leaves Book/Scroll.
     elseif p.currentRemoteRecordId and data.newMode ~= "Book" and data.newMode ~= "Scroll" then
         core.sendGlobalEvent('BookWorm_CleanupRemote', { 
             recordId = p.currentRemoteRecordId, 
@@ -71,12 +60,12 @@ function ui_handler.handleModeChange(data, state)
         end
         
         local inv = types.Actor.objectIsInstance(obj) and types.Actor.inventory(obj) or types.Container.inventory(obj)
-        -- FIXED: Removed boolean argument, passing p.cfg instead
-        p.invScanner.scan(inv, sourceLabel, p.booksRead, p.notesRead, p.utils, p.cfg)
+        -- PASS: The object 'obj' is the owner of this inventory
+        p.invScanner.scan(inv, sourceLabel, p.booksRead, p.notesRead, p.utils, p.cfg, p.sessionState, p.self, obj)
 
     elseif data.newMode == "Interface" and p.activeWindow == nil then
-        -- FIXED: Removed boolean argument, passing p.cfg instead
-        p.invScanner.scan(types.Actor.inventory(p.self), "in inventory", p.booksRead, p.notesRead, p.utils, p.cfg)
+        -- PASS: 'p.self' is both the player and the owner of this inventory
+        p.invScanner.scan(types.Actor.inventory(p.self), "in inventory", p.booksRead, p.notesRead, p.utils, p.cfg, p.sessionState, p.self, p.self)
     end
 end
 

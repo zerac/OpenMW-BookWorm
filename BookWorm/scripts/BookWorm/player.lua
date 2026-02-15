@@ -37,6 +37,11 @@ local masterTotals = nil
 local searchString = ""
 local isSearchActive = false 
 
+-- SESSION STATE (Persistent through session, not stored in save)
+local sessionState = {
+    InventoryDiscoveryMessage = "none"
+}
+
 -- SETTINGS INITIALIZATION
 local uiSettings = storage.playerSection("Settings_BookWorm_UI")
 local keySettings = storage.playerSection("Settings_BookWorm_Keys")
@@ -51,6 +56,7 @@ local cfg = {
     nextPageKey = keySettings:get("nextPageKey"):lower(),
     displayNotificationMessage = notifSettings:get("displayNotificationMessage"),
     displayNotificationMessageOnReading = notifSettings:get("displayNotificationMessageOnReading"),
+    throttleInventoryNotifications = notifSettings:get("throttleInventoryNotifications"),
     playNotificationSounds = notifSettings:get("playNotificationSounds"),
     recognizeSkillBooks = notifSettings:get("recognizeSkillBooks"),
     showSkillNames = notifSettings:get("showSkillNames"),
@@ -69,6 +75,7 @@ local function updateConfig()
     cfg.nextPageKey = keySettings:get("nextPageKey"):lower()
     cfg.displayNotificationMessage = notifSettings:get("displayNotificationMessage")
     cfg.displayNotificationMessageOnReading = notifSettings:get("displayNotificationMessageOnReading")
+    cfg.throttleInventoryNotifications = notifSettings:get("throttleInventoryNotifications")
     cfg.playNotificationSounds = notifSettings:get("playNotificationSounds")
     cfg.recognizeSkillBooks = notifSettings:get("recognizeSkillBooks")
     cfg.showSkillNames = notifSettings:get("showSkillNames")
@@ -158,6 +165,8 @@ return {
         onLoad = function(data) 
             local loaded = state_manager.processLoad(data)
             booksRead, notesRead = loaded.books, loaded.notes
+            -- RESET: Per requirements, reset inventory message tracking on load
+            sessionState.InventoryDiscoveryMessage = "none"
             initializeState()
         end,
 
@@ -295,7 +304,8 @@ return {
                 activeWindow = activeWindow, lastLookedAtObj = scanner_ctrl.getLastLookedAt(),
                 booksRead = booksRead, notesRead = notesRead, currentRemoteRecordId = rId, currentRemoteTarget = rTarget,
                 reader = reader, invScanner = invScanner, utils = utils, self = self,
-                cfg = cfg
+                cfg = cfg,
+                sessionState = sessionState 
             })
             if result == "CLOSE_LIBRARY" then activeWindow, activeMode = nil, nil
             elseif result == "CLEANUP_GHOST" then remote.cleanup(self); remote.handleAudio(false) end

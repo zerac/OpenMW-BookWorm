@@ -29,5 +29,7 @@
         "Toggle display of skill name in notifications for skill books (requires 'Recognize skill books' to be enabled).": "Toggle display of skill name in notifications for skill books (requires 'Recognize skill books' to be enabled).",
         "Play skill notification sounds": "Play skill notification sounds",
         "Toggle sound alert on new skill book discovery message. (requires 'Recognize skill books' and 'Play notification sounds' to be enabled).": "Toggle sound alert on new skill book discovery message. (requires 'Recognize skill books' and 'Play notification sounds' to be enabled)."
+        "Throttle inventory notifications": "Throttle inventory notifications",
+        "Do not repeat player inventory notifications (requires 'Display notification messages').": "Do not repeat player inventory notifications (requires 'Display notification messages')."
     }
 }

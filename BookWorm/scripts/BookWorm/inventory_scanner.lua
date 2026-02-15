@@ -14,8 +14,13 @@ local ambient = require('openmw.ambient')
 
 local inventory_scanner = {}
 
-function inventory_scanner.scan(inv, sourceLabel, booksRead, notesRead, utils, cfg)
-    if not inv then return end
+-- UPDATED: Added 'owner' to the parameters
+function inventory_scanner.scan(inv, sourceLabel, booksRead, notesRead, utils, cfg, sessionState, player, owner)
+    if not inv or not utils or not sessionState then return end
+    
+    -- Identify if the owner of the inventory is the player
+    local isPlayerInv = (owner == player)
+
     for _, item in ipairs(inv:getAll(types.Book)) do
         local id = item.recordId:lower()
         if utils.isTrackable(id) and not (booksRead[id] or notesRead[id]) then
@@ -23,27 +28,41 @@ function inventory_scanner.scan(inv, sourceLabel, booksRead, notesRead, utils, c
             local skillId, _ = utils.getSkillInfo(id)
             local isNote = utils.isLoreNote(id)
             
-            if cfg.displayNotificationMessage then
-                if isNote then
-                    ui.showMessage(string.format("New letter %s: %s", sourceLabel, bookName))
-                elseif skillId then
-                    local labelText = "rare tome"
-                    if cfg.showSkillNames then
-                        local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
-                        labelText = skillLabel .. " tome"
-                    end
-                    ui.showMessage(string.format("New %s %s: %s", labelText, sourceLabel, bookName))
+            local currentMsg = ""
+            if isNote then
+                currentMsg = string.format("New letter %s: %s", sourceLabel, bookName)
+            elseif skillId then
+                local labelText = "rare tome"
+                if cfg.showSkillNames then
+                    local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
+                    labelText = skillLabel .. " tome"
+                end
+                currentMsg = string.format("New %s %s: %s", labelText, sourceLabel, bookName)
+            else
+                currentMsg = string.format("New tome %s: %s", sourceLabel, bookName)
+            end
+
+            -- THROTTLING LOGIC
+            local shouldDisplay = true
+            if isPlayerInv and cfg.throttleInventoryNotifications then
+                if currentMsg == sessionState.InventoryDiscoveryMessage then
+                    shouldDisplay = false
                 else
-                    ui.showMessage(string.format("New tome %s: %s", sourceLabel, bookName))
+                    sessionState.InventoryDiscoveryMessage = currentMsg
                 end
             end
 
-            -- Audio logic remains independent
-            if cfg.playNotificationSounds then
-                if skillId and cfg.playSkillNotificationSounds then
-                    ambient.playSound("skillraise")
-                else
-                    ambient.playSound("Book Open")
+            if shouldDisplay then
+                if cfg.displayNotificationMessage then
+                    ui.showMessage(currentMsg)
+                end
+
+                if cfg.playNotificationSounds then
+                    if skillId and cfg.playSkillNotificationSounds then 
+                        ambient.playSound("skillraise") 
+                    else
+                        ambient.playSound("Book Open")
+                    end
                 end
             end
             return 
