@@ -19,7 +19,7 @@ local ambient = require('openmw.ambient')
 local storage = require('openmw.storage')
 local async = require('openmw.async')
 
-local L = core.l10n('BookWorm')
+local L = core.l10n('BookWorm', 'en')
 local utils = require('scripts.BookWorm.utils')
 local ui_library = require('scripts.BookWorm.ui_library')
 local scanner = require('scripts.BookWorm.scanner')

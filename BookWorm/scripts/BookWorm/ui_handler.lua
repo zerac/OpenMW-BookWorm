@@ -13,7 +13,7 @@ local types = require('openmw.types')
 local core = require('openmw.core')
 local aux_ui = require('openmw_aux.ui') 
 
-local L = core.l10n('BookWorm') 
+local L = core.l10n('BookWorm', 'en')
 local ui_handler = {}
 
 function ui_handler.handleModeChange(data, state)

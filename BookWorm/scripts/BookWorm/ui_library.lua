@@ -16,7 +16,7 @@ local core = require('openmw.core')
 local async = require('openmw.async')
 local I = require('openmw.interfaces') 
 
-local L = core.l10n('BookWorm')
+local L = core.l10n('BookWorm', 'en')
 local ui_library = {} 
 
 local function nameMatchesLetter(name, char)
@@ -123,12 +123,13 @@ function ui_library.createWindow(params)
     local searchLabel = ""
     local searchColor = utils.inkColor
     if isSearchActive then
-        -- FIXED: Named key 'text'
-        searchLabel = L('Library_Search_Active', {text = searchString})
+        -- Use explicit tostring to ensure the C++ bridge receives a string type
+        searchLabel = L('Library_Search_Active', {text = tostring(searchString)})
         searchColor = util.color.rgb(0.6, 0.2, 0.1)
     elseif searchString ~= "" then
-        -- FIXED: Named key 'text'
-        searchLabel = L('Library_Search_Results', {text = searchString:upper()})
+        -- Explicitly cast the lowercased string
+        local lowerSearch = tostring(searchString):lower()
+        searchLabel = L('Library_Search_Results', {text = lowerSearch})
     else
         searchLabel = L('Library_Search_Hint')
     end

@@ -14,7 +14,7 @@ local util = require('openmw.util')
 local storage = require('openmw.storage')
 local core = require('openmw.core') 
 
-local L = core.l10n('BookWorm')
+local L = core.l10n('BookWorm', 'en')
 local SKILL_L = core.l10n('SKILLS') -- Localized skill names from engine
 local utils = {}
 

@@ -15,7 +15,7 @@ local input = require('openmw.input')
 local core = require('openmw.core')
 local I = require('openmw.interfaces')
 
-local L = core.l10n('BookWorm')
+local L = core.l10n('BookWorm', 'en')
 local scanner_controller = {}
 
 local internalState = {

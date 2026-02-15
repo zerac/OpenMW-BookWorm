@@ -14,7 +14,7 @@ local ambient = require('openmw.ambient')
 local core = require('openmw.core') 
 local self = require('openmw.self')
 
-local L = core.l10n('BookWorm') 
+local L = core.l10n('BookWorm', 'en')
 local inventory_scanner = {}
 
 function inventory_scanner.scan(inv, sourceLabel, booksRead, notesRead, utils, cfg, sessionState, player, owner)

@@ -15,7 +15,7 @@ local ambient = require('openmw.ambient')
 local core = require('openmw.core')
 local storage = require('openmw.storage')
 
-local L = core.l10n('BookWorm')
+local L = core.l10n('BookWorm', 'en')
 local reader = {}
 
 local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
