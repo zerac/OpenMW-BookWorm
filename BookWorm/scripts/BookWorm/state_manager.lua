@@ -7,14 +7,6 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org>.
 --]]
  
 local core = require('openmw.core')
@@ -23,8 +15,6 @@ local self = require('openmw.self')
 
 local state_manager = {}
 
--- Scans the game database for all trackable books to establish "100% completion" targets
--- This builds the reference counts for Combat, Magic, Stealth, and Lore.
 function state_manager.buildMasterList(utils)
     local totals = { combat = 0, magic = 0, stealth = 0, lore = 0, totalTomes = 0, totalLetters = 0 }
     
@@ -35,8 +25,8 @@ function state_manager.buildMasterList(utils)
                 totals.totalLetters = totals.totalLetters + 1
             else
                 totals.totalTomes = totals.totalTomes + 1
-                -- We use Library info here so tracking stays accurate regardless of Notif settings
-                local _, cat = utils.getSkillInfoLibrary(id)
+                -- Use internal IDs for counting logic
+                local _, cat = utils.getSkillInfoExport(id)
                 if totals[cat] ~= nil then
                     totals[cat] = totals[cat] + 1
                 end
@@ -50,19 +40,15 @@ function state_manager.processLoad(data)
     local state = { books = {}, notes = {} }
     if data then
         local saveMarker = data.saveTimestamp or 0
-        -- Normalize existing Books
-        -- Convert old IDs to lowercase
         if data.booksRead then
             for id, ts in pairs(data.booksRead) do 
-                local lowerId = id:lower() -- Convert old IDs to lowercase
+                local lowerId = id:lower()
                 if ts <= saveMarker then state.books[lowerId] = ts end 
             end
         end
-        -- Normalize existing Notes
-        -- Convert old IDs to lowercase
         if data.notesRead then
             for id, ts in pairs(data.notesRead) do 
-                local lowerId = id:lower() -- Convert old IDs to lowercase
+                local lowerId = id:lower()
                 if ts <= saveMarker then state.notes[lowerId] = ts end 
             end
         end
@@ -70,17 +56,16 @@ function state_manager.processLoad(data)
     return state
 end
 
--- Export only Books
 function state_manager.exportBooks(books, utils)
     print(string.format("--- BOOKWORM: BOOK EXPORT [%s] ---", types.Player.record(self).name))
     for id, ts in pairs(books) do 
-        local skillId, _ = utils.getSkillInfoLibrary(id)
+        -- Use the Export variant for raw ID
+        local skillId, _ = utils.getSkillInfoExport(id)
         local label = skillId and (skillId:sub(1,1):upper() .. skillId:sub(2)) or "Lore"
         print(string.format("[%0.1f] [%s] %s (%s)", ts, label, utils.getBookName(id), id)) 
     end
 end
 
--- Export only Letters
 function state_manager.exportLetters(notes, utils)
     print(string.format("--- BOOKWORM: LETTER EXPORT [%s] ---", types.Player.record(self).name))
     for id, ts in pairs(notes) do 

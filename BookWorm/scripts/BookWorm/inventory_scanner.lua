@@ -26,18 +26,19 @@ function inventory_scanner.scan(inv, sourceLabel, booksRead, notesRead, utils, c
         local id = item.recordId:lower()
         if utils.isTrackable(id) and not (booksRead[id] or notesRead[id]) then
             local bookName = utils.getBookName(id)
-            local skillId, _ = utils.getSkillInfo(id)
+            -- skillLabel is now localized via utils using core.l10n('SKILLS')
+            local skillLabel, _ = utils.getSkillInfo(id)
             local isNote = utils.isLoreNote(id)
             
             local currentMsg = ""
             if isNote then
                 -- ICU Named: New letter {source}: {name}
                 currentMsg = L('InvScanner_Msg_Letter', {source = sourceLabel, name = bookName})
-            elseif skillId then
+            elseif skillLabel then
                 local labelText = L('InvScanner_Msg_RareTome') 
                 if cfg.showSkillNames then
-                    local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
                     -- ICU Named: {skill} tome
+                    -- Use localized label directly from utils
                     labelText = L('InvScanner_Msg_SkillTome', {skill = skillLabel})
                 end
                 -- ICU Named: New {label} {source}: {name}
@@ -62,7 +63,8 @@ function inventory_scanner.scan(inv, sourceLabel, booksRead, notesRead, utils, c
                 end
 
                 if cfg.playNotificationSounds then
-                    if skillId and cfg.playSkillNotificationSounds then 
+                    -- skillLabel presence indicates a skill book was found
+                    if skillLabel and cfg.playSkillNotificationSounds then 
                         ambient.playSound("skillraise") 
                     else
                         ambient.playSound("Book Open")

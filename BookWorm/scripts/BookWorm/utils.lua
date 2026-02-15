@@ -15,6 +15,7 @@ local storage = require('openmw.storage')
 local core = require('openmw.core') 
 
 local L = core.l10n('BookWorm')
+local SKILL_L = core.l10n('SKILLS') -- Localized skill names from engine
 local utils = {}
 
 local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
@@ -65,27 +66,40 @@ end
 
 function utils.getBookName(id)
     local record = types.Book.record(id)
-    -- ICU Named: Unknown Tome: {id}
     return record and record.name or L('Utils_Name_Fallback', {id = id})
 end
 
+-- Used for Notifications (Localized)
 function utils.getSkillInfo(id)
     if not notifSettings:get("recognizeSkillBooks") then return nil, "lore" end
     if not utils.isTrackable(id) then return nil, "unknown" end
     local record = types.Book.record(id)
     if record and record.skill then
         local skillId = record.skill:lower()
-        return skillId, utils.skillCategories[skillId] or "unknown"
+        return SKILL_L(record.skill), utils.skillCategories[skillId] or "unknown"
     end
     return nil, "lore"
 end
 
+-- Used for Library UI (Localized)
 function utils.getSkillInfoLibrary(id)
     if not utils.isTrackable(id) then return nil, "unknown" end
     local record = types.Book.record(id)
     if record and record.skill then
         local skillId = record.skill:lower()
-        return skillId, utils.skillCategories[skillId] or "unknown"
+        return SKILL_L(record.skill), utils.skillCategories[skillId] or "unknown"
+    end
+    return nil, "lore"
+end
+
+-- Used for Export to Log (Strict English/Internal ID)
+function utils.getSkillInfoExport(id)
+    if not utils.isTrackable(id) then return nil, "unknown" end
+    local record = types.Book.record(id)
+    if record and record.skill then
+        local skillId = record.skill:lower()
+        -- Return raw skill identifier (e.g. "acrobatics")
+        return record.skill, utils.skillCategories[skillId] or "unknown"
     end
     return nil, "lore"
 end

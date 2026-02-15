@@ -147,7 +147,8 @@ function ui_library.createWindow(params)
     local endIdx = math.min(startIdx + itemsPerPage - 1, totalItems)
     for i = startIdx, endIdx do
         local entry = sortedData[i]
-        local skillId, category = utils.getSkillInfoLibrary(entry.id)
+        -- skillLabel is now localized via utils using core.l10n('SKILLS')
+        local skillLabel, category = utils.getSkillInfoLibrary(entry.id)
         local normalColor = utils.getSkillColor(category)
         local hoverColor = util.color.rgb(0.8, 0.6, 0.1)
         local isNew = (entry.ts >= newThreshold and entry.ts > 0)
@@ -156,9 +157,8 @@ function ui_library.createWindow(params)
         -- FIXED: Named key 'name'
         local displayText = L('Library_Entry_Format', {name = entryName})
         if mode == "TOMES" then
-            if skillId then 
-                local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
-                -- FIXED: Named keys 'name' and 'skill'
+            if skillLabel then 
+                -- FIXED: Named keys 'name' and 'skill' - using localized label from utils
                 displayText = L('Library_Entry_Skill_Format', {name = displayText, skill = skillLabel}) 
             end
         end
@@ -210,9 +210,8 @@ function ui_library.createWindow(params)
         
         local footerLabel = ""
         if isSkillFilter then 
-            local catLabel = activeFilter:sub(1,1):upper() .. activeFilter:sub(2)
-            -- FIXED: Named key 'skill'
-            footerLabel = L('Library_Footer_Skill_Tomes', {skill = catLabel})
+            -- FIXED: Named key 'skill' - use activeFilter directly (localized name handled in L call)
+            footerLabel = L('Library_Footer_Skill_Tomes', {skill = activeFilter})
         else 
             footerLabel = L('Library_Footer_Total_Tomes')
         end
