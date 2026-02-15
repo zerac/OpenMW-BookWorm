@@ -94,3 +94,23 @@ I.Settings.registerGroup({
         }
     }
 })
+
+I.Settings.registerGroup({
+    key = "Settings_BookWorm_Notif",
+    page = "BookWorm",
+    l10n = "BookWorm",
+    name = "Notifications",
+    permanentStorage = true,
+    order = 3,
+    settings = {
+        {
+            key = "recognizeSkillBooks",
+            name = "Recognize skill books",
+            description = "Toggle detection of skill-increasing books (does not affect Library or Export).",
+            type = "boolean",
+            default = true,
+            renderer = "checkbox",
+            order = 1
+        },
+    }
+})

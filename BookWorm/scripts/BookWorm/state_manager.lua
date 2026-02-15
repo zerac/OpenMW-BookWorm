@@ -35,7 +35,7 @@ function state_manager.buildMasterList(utils)
                 totals.totalLetters = totals.totalLetters + 1
             else
                 totals.totalTomes = totals.totalTomes + 1
-                local _, cat = utils.getSkillInfo(id)
+                local _, cat = utils.getSkillInfoLibrary(id)
                 if totals[cat] ~= nil then
                     totals[cat] = totals[cat] + 1
                 end
@@ -73,7 +73,7 @@ end
 function state_manager.exportBooks(books, utils)
     print(string.format("--- BOOKWORM: BOOK EXPORT [%s] ---", types.Player.record(self).name))
     for id, ts in pairs(books) do 
-        local skillId, _ = utils.getSkillInfo(id)
+        local skillId, _ = utils.getSkillInfoLibrary(id)
         local label = skillId and (skillId:sub(1,1):upper() .. skillId:sub(2)) or "Lore"
         print(string.format("[%0.1f] [%s] %s (%s)", ts, label, utils.getBookName(id), id)) 
     end

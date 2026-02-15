@@ -40,6 +40,7 @@ local isSearchActive = false
 -- SETTINGS INITIALIZATION
 local uiSettings = storage.playerSection("Settings_BookWorm_UI")
 local keySettings = storage.playerSection("Settings_BookWorm_Keys")
+local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
 
 -- Local config cache
 local cfg = {
@@ -47,7 +48,8 @@ local cfg = {
     openTomesKey = keySettings:get("openTomesKey"):lower(),
     openLettersKey = keySettings:get("openLettersKey"):lower(),
     prevPageKey = keySettings:get("prevPageKey"):lower(),
-    nextPageKey = keySettings:get("nextPageKey"):lower()
+    nextPageKey = keySettings:get("nextPageKey"):lower(),
+    recognizeSkillBooks = notifSettings:get("recognizeSkillBooks")
 }
 
 -- Persistent Session States
@@ -60,6 +62,7 @@ local function updateConfig()
     cfg.openLettersKey = keySettings:get("openLettersKey"):lower()
     cfg.prevPageKey = keySettings:get("prevPageKey"):lower()
     cfg.nextPageKey = keySettings:get("nextPageKey"):lower()
+    cfg.recognizeSkillBooks = notifSettings:get("recognizeSkillBooks")
 end
 
 -- FIX: Clamping logic correctly handles table counting
@@ -89,6 +92,13 @@ keySettings:subscribe(async:callback(function(section, key)
             activeWindow, activeMode = nil, nil
             I.UI.setMode(nil)
         end
+    end
+end))
+
+notifSettings:subscribe(async:callback(function(section, key)
+    updateConfig()
+    if activeWindow then
+        refreshUI(false, true)
     end
 end))
 

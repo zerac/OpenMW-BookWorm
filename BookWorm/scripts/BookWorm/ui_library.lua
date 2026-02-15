@@ -59,7 +59,7 @@ function ui_library.createWindow(params)
 
     for id, _ in pairs(dataMap) do
         local name = utils.getBookName(id)
-        local _, cat = utils.getSkillInfo(id)
+        local _, cat = utils.getSkillInfoLibrary(id)
         counts[cat] = (counts[cat] or 0) + 1
         for i = 1, #alphabet do
             local char = alphabet:sub(i, i)
@@ -70,7 +70,7 @@ function ui_library.createWindow(params)
     local timestamps = {}
     for id, ts in pairs(dataMap) do 
         local name = utils.getBookName(id)
-        local _, cat = utils.getSkillInfo(id)
+        local _, cat = utils.getSkillInfoLibrary(id)
         local match = true
         if not isNone then
             if #activeFilter == 1 then match = nameMatchesLetter(name, activeFilter)
@@ -143,13 +143,12 @@ function ui_library.createWindow(params)
     local endIdx = math.min(startIdx + itemsPerPage - 1, totalItems)
     for i = startIdx, endIdx do
         local entry = sortedData[i]
-        local _, category = utils.getSkillInfo(entry.id)
+        local skillId, category = utils.getSkillInfoLibrary(entry.id)
         local normalColor = utils.getSkillColor(category)
         local hoverColor = util.color.rgb(0.8, 0.6, 0.1)
         local isNew = (entry.ts >= newThreshold and entry.ts > 0)
         local displayText = (isNew and "(NEW) " or "") .. "- " .. entry.name
         if mode == "TOMES" then
-            local skillId, _ = utils.getSkillInfo(entry.id)
             if skillId then displayText = displayText .. " (" .. skillId:sub(1,1):upper() .. skillId:sub(2) .. ")" end
         end
         local textProps = { text = displayText, textSize = 18, textColor = normalColor, font = "DefaultBold" }

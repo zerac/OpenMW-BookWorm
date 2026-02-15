@@ -19,8 +19,12 @@
  
 local types = require('openmw.types')
 local util = require('openmw.util')
+local storage = require('openmw.storage')
 
 local utils = {}
+
+-- SETTINGS ACCESS
+local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
 
 -- NEW: Dedicated "unselected" state constant
 utils.FILTER_NONE = "UNSELECTED_FILTER_STATE"
@@ -74,6 +78,17 @@ function utils.getBookName(id)
 end
 
 function utils.getSkillInfo(id)
+    if not notifSettings:get("recognizeSkillBooks") then return nil, "lore" end
+    if not utils.isTrackable(id) then return nil, "unknown" end
+    local record = types.Book.record(id)
+    if record and record.skill then
+        local skillId = record.skill:lower()
+        return skillId, utils.skillCategories[skillId] or "unknown"
+    end
+    return nil, "lore"
+end
+
+function utils.getSkillInfoLibrary(id)
     if not utils.isTrackable(id) then return nil, "unknown" end
     local record = types.Book.record(id)
     if record and record.skill then
