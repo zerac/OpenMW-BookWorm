@@ -19,6 +19,7 @@ local ambient = require('openmw.ambient')
 local storage = require('openmw.storage')
 local async = require('openmw.async')
 
+local L = core.l10n('BookWorm')
 local utils = require('scripts.BookWorm.utils')
 local ui_library = require('scripts.BookWorm.ui_library')
 local scanner = require('scripts.BookWorm.scanner')
@@ -208,11 +209,10 @@ return {
 
                 local newMode = (symbol == cfg.openTomesKey) and "TOMES" or "LETTERS"
                 if input.isShiftPressed() then
-                    -- AUDIT: Dynamic labels for exports
-                    local exportLabel = (newMode == "TOMES") and "Tomes" or "Letters"
+                    local exportLabel = (newMode == "TOMES") and L('Player_Label_Tomes') or L('Player_Label_Letters')
                     if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils) 
                     else state_manager.exportLetters(notesRead, utils) end
-                    ui.showMessage(string.format("Exported %s to Log", exportLabel))
+                    ui.showMessage(string.format(L('Player_Msg_Export_Success'), exportLabel))
                 else
                     searchString = ""
                     isSearchActive = false

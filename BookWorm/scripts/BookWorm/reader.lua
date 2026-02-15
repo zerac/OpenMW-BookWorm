@@ -7,14 +7,6 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org>.
 --]]
  
 local ui = require('openmw.ui')
@@ -23,13 +15,12 @@ local ambient = require('openmw.ambient')
 local core = require('openmw.core')
 local storage = require('openmw.storage')
 
+local L = core.l10n('BookWorm')
 local reader = {}
 
--- SETTINGS ACCESS
 local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
 
 function reader.mark(obj, booksRead, notesRead, utils)
-    -- Enforce Trackable Guard: Stops enchanted scrolls from being marked or messaging
     if not obj or obj.type ~= types.Book or not utils.isTrackable(obj.recordId) then return end
     
     local id = obj.recordId:lower()
@@ -39,13 +30,12 @@ function reader.mark(obj, booksRead, notesRead, utils)
     local bookName = utils.getBookName(id)
     local recognizeSkills = notifSettings:get("recognizeSkillBooks")
     local showNames = notifSettings:get("showSkillNames")
-    
-    -- FIXED: The 'on reading' setting now strictly dictates visibility for this function
     local canShow = notifSettings:get("displayNotificationMessageOnReading")
 
     if targetTable[id] then 
         if canShow then
-            ui.showMessage("(Already read) " .. bookName)
+            -- ICU Named: (Already read) {name}
+            ui.showMessage(L('Reader_Msg_AlreadyRead', {name = bookName}))
         end
     else
         targetTable[id] = core.getSimulationTime()
@@ -53,14 +43,17 @@ function reader.mark(obj, booksRead, notesRead, utils)
         if canShow then
             local skillId, _ = utils.getSkillInfo(id)
             if skillId and recognizeSkills then
-                local labelText = "rare tome"
+                local labelText = L('Reader_Msg_RareTome')
                 if showNames then
                     local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
-                    labelText = skillLabel .. " tome"
+                    -- ICU Named: {skill} tome
+                    labelText = L('Reader_Msg_SkillTome', {skill = skillLabel})
                 end
-                ui.showMessage(string.format("Marked as read: %s (%s)", bookName, labelText))
+                -- ICU Named: Marked as read: {name} ({label})
+                ui.showMessage(L('Reader_Msg_MarkedRead_Complex', {name = bookName, label = labelText}))
             else
-                ui.showMessage("Marked as read: " .. bookName)
+                -- ICU Named: Marked as read: {name}
+                ui.showMessage(L('Reader_Msg_MarkedRead_Simple', {name = bookName}))
             end
         end
     end

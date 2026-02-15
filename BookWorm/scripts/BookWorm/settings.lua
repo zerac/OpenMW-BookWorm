@@ -19,27 +19,28 @@
 
 local I = require('openmw.interfaces')
 
--- Match the vanilla omw/input/settings.lua pattern
+-- Match the engine's usage example in scripts/omw/settings/player.lua
 I.Settings.registerPage({
     key = "BookWorm",
     l10n = "BookWorm", 
-    name = "BookWorm",
-    description = "Library Management Settings"
+    name = "Settings_Page_Name", -- Key in l10n/BookWorm/en.yaml
+    description = "Settings_Page_Desc" -- Key in l10n/BookWorm/en.yaml
 })
 
+-- UI Settings Group
 I.Settings.registerGroup({
     key = "Settings_BookWorm_UI",
     page = "BookWorm",
     l10n = "BookWorm",
-    name = "Interface Settings",
-    permanentStorage = true, -- Matches vanilla requirement for MENU context
+    name = "Settings_GroupUI_Name",
+    permanentStorage = true, -- Stored in permanent storage (Main Menu context)
     order = 1,
     settings = {
         {
             key = "itemsPerPage",
-            name = "Items Per Page",
-            description = "Number of books displayed per page.",
-            type = "number",
+            name = "Settings_ItemsPerPage_Name",
+            description = "Settings_ItemsPerPage_Desc",
+            type = "number", -- Required by engine for 'number' renderer
             default = 20,
             renderer = "number",
             argument = { min = 5, max = 50, step = 1 },
@@ -48,27 +49,28 @@ I.Settings.registerGroup({
     }
 })
 
+-- Keybindings Group
 I.Settings.registerGroup({
     key = "Settings_BookWorm_Keys",
     page = "BookWorm",
     l10n = "BookWorm",
-    name = "Controls",
-    permanentStorage = true, -- Matches vanilla requirement for MENU context
+    name = "Settings_GroupKeys_Name",
+    permanentStorage = true,
     order = 2,
     settings = {
         {
             key = "openTomesKey",
-            name = "Open Tomes Library",
-            description = "Key to open the Tomes menu (default: K).",
-            type = "string",
+            name = "Settings_OpenTomes_Name",
+            description = "Settings_OpenTomes_Desc",
+            type = "string", -- Required for 'textLine' renderer
             default = "k",
             renderer = "textLine",
             order = 1
         },
         {
             key = "openLettersKey",
-            name = "Open Letters Library",
-            description = "Key to open the Letters menu (default: L).",
+            name = "Settings_OpenLetters_Name",
+            description = "Settings_OpenLetters_Desc",
             type = "string",
             default = "l",
             renderer = "textLine",
@@ -76,8 +78,8 @@ I.Settings.registerGroup({
         },
         {
             key = "prevPageKey",
-            name = "Previous Page",
-            description = "Key for previous page (default: I).",
+            name = "Settings_PrevPage_Name",
+            description = "Settings_PrevPage_Desc",
             type = "string",
             default = "i",
             renderer = "textLine",
@@ -85,8 +87,8 @@ I.Settings.registerGroup({
         },
         {
             key = "nextPageKey",
-            name = "Next Page",
-            description = "Key for next page (default: O).",
+            name = "Settings_NextPage_Name",
+            description = "Settings_NextPage_Desc",
             type = "string",
             default = "o",
             renderer = "textLine",
@@ -95,18 +97,19 @@ I.Settings.registerGroup({
     }
 })
 
+-- Notifications Group
 I.Settings.registerGroup({
     key = "Settings_BookWorm_Notif",
     page = "BookWorm",
     l10n = "BookWorm",
-    name = "Notifications",
+    name = "Settings_GroupNotif_Name",
     permanentStorage = true,
     order = 3,
     settings = {
          {
             key = "displayNotificationMessage",
-            name = "Display notification messages",
-            description = "Toggle display of message on new discovery.",
+            name = "Settings_DisplayNotif_Name",
+            description = "Settings_DisplayNotif_Desc",
             type = "boolean",
             default = true,
             renderer = "checkbox",
@@ -114,8 +117,8 @@ I.Settings.registerGroup({
         },
         {
             key = "displayNotificationMessageOnReading",
-            name = "Display notification messages on reading",
-            description = "Toggle display of new discovery message when player reads the tome (strictly overrides 'Display notification messages').",
+            name = "Settings_DisplayNotifRead_Name",
+            description = "Settings_DisplayNotifRead_Desc",
             type = "boolean",
             default = true,
             renderer = "checkbox",
@@ -123,48 +126,48 @@ I.Settings.registerGroup({
         },
         {
             key = "throttleInventoryNotifications",
-            name = "Throttle inventory notifications",
-            description = "Do not repeat player inventory notifications (requires 'Display notification messages').",
-            type = "boolean",
-            default = true,
-            renderer = "checkbox",
-            order = 2
-        },
-        {
-            key = "playNotificationSounds",
-            name = "Play notification sounds",
-            description = "Toggle sound alert on new discovery.",
+            name = "Settings_Throttle_Name",
+            description = "Settings_Throttle_Desc",
             type = "boolean",
             default = true,
             renderer = "checkbox",
             order = 3
         },
         {
-            key = "recognizeSkillBooks",
-            name = "Recognize skill books",
-            description = "Toggle detection of skill-increasing books (does not affect Library or Export).",
+            key = "playNotificationSounds",
+            name = "Settings_PlaySounds_Name",
+            description = "Settings_PlaySounds_Desc",
             type = "boolean",
             default = true,
             renderer = "checkbox",
             order = 4
         },
         {
-            key = "showSkillNames",
-            name = "Show skill names",
-            description = "Toggle display of skill name in notifications for skill books (requires 'Recognize skill books' to be enabled).",
+            key = "recognizeSkillBooks",
+            name = "Settings_RecognizeSkill_Name",
+            description = "Settings_RecognizeSkill_Desc",
             type = "boolean",
             default = true,
             renderer = "checkbox",
             order = 5
         },
         {
-            key = "playSkillNotificationSounds",
-            name = "Play skill notification sounds",
-            description = "Toggle sound alert on new skill book discovery message. (requires 'Recognize skill books' and 'Play notification sounds' to be enabled).",
+            key = "showSkillNames",
+            name = "Settings_ShowSkillNames_Name",
+            description = "Settings_ShowSkillNames_Desc",
             type = "boolean",
             default = true,
             renderer = "checkbox",
             order = 6
+        },
+        {
+            key = "playSkillNotificationSounds",
+            name = "Settings_PlaySkillSounds_Name",
+            description = "Settings_PlaySkillSounds_Desc",
+            type = "boolean",
+            default = true,
+            renderer = "checkbox",
+            order = 7
         }
     }
 })

@@ -12,8 +12,10 @@ local ui = require('openmw.ui')
 local camera = require('openmw.camera')
 local ambient = require('openmw.ambient')
 local input = require('openmw.input')
+local core = require('openmw.core')
 local I = require('openmw.interfaces')
 
+local L = core.l10n('BookWorm')
 local scanner_controller = {}
 
 local internalState = {
@@ -51,16 +53,20 @@ function scanner_controller.update(dt, params)
                     
                     if params.cfg.displayNotificationMessage then
                         if params.utils.isLoreNote(id) then
-                            ui.showMessage("New letter: " .. bookName)
+                            -- ICU Named: New letter: {name}
+                            ui.showMessage(L('Scanner_Msg_Letter', {name = bookName}))
                         elseif skillId then
-                            local labelText = "rare tome"
+                            local labelText = L('Scanner_Msg_RareTome')
                             if params.cfg.showSkillNames then
                                 local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
-                                labelText = skillLabel .. " tome"
+                                -- ICU Named: {skill} tome
+                                labelText = L('Scanner_Msg_SkillTome', {skill = skillLabel})
                             end
-                            ui.showMessage(string.format("New %s: %s", labelText, bookName))
+                            -- ICU Named: New {label}: {name}
+                            ui.showMessage(L('Scanner_Msg_Discovery_Complex', {label = labelText, name = bookName}))
                         else
-                            ui.showMessage("New tome: " .. bookName)
+                            -- ICU Named: New tome: {name}
+                            ui.showMessage(L('Scanner_Msg_Discovery_Simple', {name = bookName}))
                         end
                     end
 

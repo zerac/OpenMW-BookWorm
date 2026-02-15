@@ -7,29 +7,20 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org>.
 --]]
  
 local types = require('openmw.types')
 local util = require('openmw.util')
 local storage = require('openmw.storage')
+local core = require('openmw.core') 
 
+local L = core.l10n('BookWorm')
 local utils = {}
 
--- SETTINGS ACCESS
 local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
 
--- NEW: Dedicated "unselected" state constant
 utils.FILTER_NONE = "UNSELECTED_FILTER_STATE"
 
--- REVERTED: Using your original hardcoded RGB values for stability
 utils.inkColor = util.color.rgb(0.15, 0.1, 0.05)      
 utils.combatColor = util.color.rgb(0.6, 0.2, 0.1)    
 utils.magicColor = util.color.rgb(0.0, 0.35, 0.65)   
@@ -74,7 +65,8 @@ end
 
 function utils.getBookName(id)
     local record = types.Book.record(id)
-    return record and record.name or "Unknown Tome: " .. id
+    -- ICU Named: Unknown Tome: {id}
+    return record and record.name or L('Utils_Name_Fallback', {id = id})
 end
 
 function utils.getSkillInfo(id)

@@ -11,14 +11,15 @@
 local ui = require('openmw.ui')
 local types = require('openmw.types')
 local ambient = require('openmw.ambient')
+local core = require('openmw.core') 
+local self = require('openmw.self')
 
+local L = core.l10n('BookWorm') 
 local inventory_scanner = {}
 
--- UPDATED: Added 'owner' to the parameters
 function inventory_scanner.scan(inv, sourceLabel, booksRead, notesRead, utils, cfg, sessionState, player, owner)
     if not inv or not utils or not sessionState then return end
     
-    -- Identify if the owner of the inventory is the player
     local isPlayerInv = (owner == player)
 
     for _, item in ipairs(inv:getAll(types.Book)) do
@@ -30,19 +31,22 @@ function inventory_scanner.scan(inv, sourceLabel, booksRead, notesRead, utils, c
             
             local currentMsg = ""
             if isNote then
-                currentMsg = string.format("New letter %s: %s", sourceLabel, bookName)
+                -- ICU Named: New letter {source}: {name}
+                currentMsg = L('InvScanner_Msg_Letter', {source = sourceLabel, name = bookName})
             elseif skillId then
-                local labelText = "rare tome"
+                local labelText = L('InvScanner_Msg_RareTome') 
                 if cfg.showSkillNames then
                     local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
-                    labelText = skillLabel .. " tome"
+                    -- ICU Named: {skill} tome
+                    labelText = L('InvScanner_Msg_SkillTome', {skill = skillLabel})
                 end
-                currentMsg = string.format("New %s %s: %s", labelText, sourceLabel, bookName)
+                -- ICU Named: New {label} {source}: {name}
+                currentMsg = L('InvScanner_Msg_Discovery_Complex', {label = labelText, source = sourceLabel, name = bookName})
             else
-                currentMsg = string.format("New tome %s: %s", sourceLabel, bookName)
+                -- ICU Named: New tome {source}: {name}
+                currentMsg = L('InvScanner_Msg_Discovery_Simple', {source = sourceLabel, name = bookName})
             end
 
-            -- THROTTLING LOGIC
             local shouldDisplay = true
             if isPlayerInv and cfg.throttleInventoryNotifications then
                 if currentMsg == sessionState.InventoryDiscoveryMessage then
