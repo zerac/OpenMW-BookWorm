@@ -49,6 +49,8 @@ local cfg = {
     openLettersKey = keySettings:get("openLettersKey"):lower(),
     prevPageKey = keySettings:get("prevPageKey"):lower(),
     nextPageKey = keySettings:get("nextPageKey"):lower(),
+    displayNotificationMessage = notifSettings:get("displayNotificationMessage"),
+    displayNotificationMessageOnReading = notifSettings:get("displayNotificationMessageOnReading"),
     playNotificationSounds = notifSettings:get("playNotificationSounds"),
     recognizeSkillBooks = notifSettings:get("recognizeSkillBooks"),
     showSkillNames = notifSettings:get("showSkillNames"),
@@ -65,6 +67,8 @@ local function updateConfig()
     cfg.openLettersKey = keySettings:get("openLettersKey"):lower()
     cfg.prevPageKey = keySettings:get("prevPageKey"):lower()
     cfg.nextPageKey = keySettings:get("nextPageKey"):lower()
+    cfg.displayNotificationMessage = notifSettings:get("displayNotificationMessage")
+    cfg.displayNotificationMessageOnReading = notifSettings:get("displayNotificationMessageOnReading")
     cfg.playNotificationSounds = notifSettings:get("playNotificationSounds")
     cfg.recognizeSkillBooks = notifSettings:get("recognizeSkillBooks")
     cfg.showSkillNames = notifSettings:get("showSkillNames")
@@ -200,7 +204,6 @@ return {
                     if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils) 
                     else state_manager.exportLetters(notesRead, utils) end
                     ui.showMessage(string.format("Exported %s to Log", exportLabel))
-                -- Open/Close sounds here are UI sounds, so they stay active.
                 else
                     searchString = ""
                     isSearchActive = false

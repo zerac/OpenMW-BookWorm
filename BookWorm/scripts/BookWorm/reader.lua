@@ -39,29 +39,30 @@ function reader.mark(obj, booksRead, notesRead, utils)
     local bookName = utils.getBookName(id)
     local recognizeSkills = notifSettings:get("recognizeSkillBooks")
     local showNames = notifSettings:get("showSkillNames")
+    
+    -- FIXED: The 'on reading' setting now strictly dictates visibility for this function
+    local canShow = notifSettings:get("displayNotificationMessageOnReading")
 
     if targetTable[id] then 
-        ui.showMessage("(Already read) " .. bookName)
-        -- Sound is intentionally omitted here to prevent double-audio with engine 
-        -- and redundant noise on re-reads.
+        if canShow then
+            ui.showMessage("(Already read) " .. bookName)
+        end
     else
         targetTable[id] = core.getSimulationTime()
         
-        local skillId, _ = utils.getSkillInfo(id)
-        if skillId and recognizeSkills then
-            local labelText = "rare tome"
-            if showNames then
-                local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
-                labelText = skillLabel .. " tome"
+        if canShow then
+            local skillId, _ = utils.getSkillInfo(id)
+            if skillId and recognizeSkills then
+                local labelText = "rare tome"
+                if showNames then
+                    local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
+                    labelText = skillLabel .. " tome"
+                end
+                ui.showMessage(string.format("Marked as read: %s (%s)", bookName, labelText))
+            else
+                ui.showMessage("Marked as read: " .. bookName)
             end
-            ui.showMessage(string.format("Marked as read: %s (%s)", bookName, labelText))
-        else
-            ui.showMessage("Marked as read: " .. bookName)
         end
-        
-        -- Sound is omitted here. 
-        -- If it is a skill book, the Engine (playerskillhandlers.lua) plays 'skillraise'.
-        -- If it is a lore book, the Engine plays the standard page-turn sound.
     end
 end
 

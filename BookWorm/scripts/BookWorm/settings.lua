@@ -103,14 +103,32 @@ I.Settings.registerGroup({
     permanentStorage = true,
     order = 3,
     settings = {
-        {
-            key = "playNotificationSounds",
-            name = "Play notification sounds",
-            description = "Toggle sound alert on new discovery message.",
+         {
+            key = "displayNotificationMessage",
+            name = "Display notification messages",
+            description = "Toggle display of message on new discovery.",
             type = "boolean",
             default = true,
             renderer = "checkbox",
             order = 1
+        },
+        {
+            key = "displayNotificationMessageOnReading",
+            name = "Display notification messages on reading",
+            description = "Toggle display of new discovery message when player reads the tome (strictly overrides 'Display notification messages').",
+            type = "boolean",
+            default = true,
+            renderer = "checkbox",
+            order = 2
+        },
+        {
+            key = "playNotificationSounds",
+            name = "Play notification sounds",
+            description = "Toggle sound alert on new discovery.",
+            type = "boolean",
+            default = true,
+            renderer = "checkbox",
+            order = 3
         },
         {
             key = "recognizeSkillBooks",
@@ -119,7 +137,7 @@ I.Settings.registerGroup({
             type = "boolean",
             default = true,
             renderer = "checkbox",
-            order = 2
+            order = 4
         },
         {
             key = "showSkillNames",
@@ -128,7 +146,7 @@ I.Settings.registerGroup({
             type = "boolean",
             default = true,
             renderer = "checkbox",
-            order = 3
+            order = 5
         },
         {
             key = "playSkillNotificationSounds",
@@ -137,7 +155,7 @@ I.Settings.registerGroup({
             type = "boolean",
             default = true,
             renderer = "checkbox",
-            order = 4
+            order = 6
         }
     }
 })
