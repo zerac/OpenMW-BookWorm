@@ -39,7 +39,8 @@ and vanilla-plus enhancements.
 
 --- SETTINGS CONFIGURATION ---
 BookWorm utilizes the native OpenMW 0.50.0 Script Settings interface. You 
-can customize your library experience without ever leaving the game. 
+can customize your library experience and notification behavior without 
+ever leaving the game. 
 
 To access these settings:
 1. Press [ESC] to open the Main Menu.
@@ -47,17 +48,31 @@ To access these settings:
 3. Select 'BookWorm' from the left-hand menu.
 
 Available Options:
-* ITEMS PER PAGE: Adjust how many titles appear in the list at once (5-50).
-* CUSTOM KEYBINDS: Reassign the Tome Library, Letter Library, and Page 
-  Navigation keys to any keys of your choice.
 
-The Library UI and export instructions will automatically update to reflect your custom keybinds.
+[ USER INTERFACE ]
+* ITEMS PER PAGE: Adjust how many titles appear in the list (5-50). Default: 20.
+
+[ KEYBINDINGS ]
+* OPEN TOMES: Set the key to open your Book Library. Default: [K].
+* OPEN LETTERS: Set the key to open your Letter/Note Library. Default: [L].
+* PREVIOUS/NEXT PAGE: Customize your navigation keys. Default: [I] and [O].
+
+[ NOTIFICATIONS ]
+* DISPLAY MESSAGES: Toggle the "New book discovered" corner notifications.
+* ON-READING NOTIF: Show a message specifically when reading a book for the first time.
+* THROTTLE INVENTORY: Prevents notification spam when picking up stacks or 
+  multiple items quickly.
+* NOTIFICATION SOUNDS: Toggle the audio cue played when finding new lore.
+* RECOGNIZE SKILL BOOKS: Enable or disable specialized tracking for skill-up books.
+* SHOW SKILL NAMES: Display the specific skill (e.g., "Acrobatics") in the notification.
+* SKILL SOUNDS: Toggle the unique audio cue played when a skill book is discovered.
 
 Note: Settings are stored in your global 'settings.cfg', meaning your 
 preferences persist across all characters and save files.
 
 --- L10N ---
 Google translated, so please take with a small rock of salt. Feedback is welcome.
+Currently includes: DE FR PL SV RU 
 
 --- INSTALLATION ---
 1. Manual Installation:
