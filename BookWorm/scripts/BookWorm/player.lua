@@ -7,6 +7,14 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org>.
 --]]
 
 local input = require('openmw.input')
@@ -19,6 +27,7 @@ local ambient = require('openmw.ambient')
 local storage = require('openmw.storage')
 local async = require('openmw.async')
 
+local L = core.l10n('BookWorm', 'en')
 local utils = require('scripts.BookWorm.utils')
 local ui_library = require('scripts.BookWorm.ui_library')
 local scanner = require('scripts.BookWorm.scanner')
@@ -37,16 +46,30 @@ local masterTotals = nil
 local searchString = ""
 local isSearchActive = false 
 
+-- SESSION STATE (Persistent through session, not stored in save)
+local sessionState = {
+    InventoryDiscoveryMessage = "none"
+}
+
 -- SETTINGS INITIALIZATION
-local userSettings = storage.playerSection("Settings_BookWorm")
+local uiSettings = storage.playerSection("Settings_BookWorm_UI")
+local keySettings = storage.playerSection("Settings_BookWorm_Keys")
+local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
 
 -- Local config cache
 local cfg = {
-    itemsPerPage = userSettings:get("itemsPerPage"),
-    openTomesKey = userSettings:get("openTomesKey"):lower(),
-    openLettersKey = userSettings:get("openLettersKey"):lower(),
-    prevPageKey = userSettings:get("prevPageKey"):lower(),
-    nextPageKey = userSettings:get("nextPageKey"):lower()
+    itemsPerPage = uiSettings:get("itemsPerPage"),
+    openTomesKey = keySettings:get("openTomesKey"):lower(),
+    openLettersKey = keySettings:get("openLettersKey"):lower(),
+    prevPageKey = keySettings:get("prevPageKey"):lower(),
+    nextPageKey = keySettings:get("nextPageKey"):lower(),
+    displayNotificationMessage = notifSettings:get("displayNotificationMessage"),
+    displayNotificationMessageOnReading = notifSettings:get("displayNotificationMessageOnReading"),
+    throttleInventoryNotifications = notifSettings:get("throttleInventoryNotifications"),
+    playNotificationSounds = notifSettings:get("playNotificationSounds"),
+    recognizeSkillBooks = notifSettings:get("recognizeSkillBooks"),
+    showSkillNames = notifSettings:get("showSkillNames"),
+    playSkillNotificationSounds = notifSettings:get("playSkillNotificationSounds")
 }
 
 -- Persistent Session States
@@ -54,11 +77,18 @@ local bookFilter, noteFilter = utils.FILTER_NONE, utils.FILTER_NONE
 local bookPage, notePage = 1, 1
 
 local function updateConfig()
-    cfg.itemsPerPage = userSettings:get("itemsPerPage")
-    cfg.openTomesKey = userSettings:get("openTomesKey"):lower()
-    cfg.openLettersKey = userSettings:get("openLettersKey"):lower()
-    cfg.prevPageKey = userSettings:get("prevPageKey"):lower()
-    cfg.nextPageKey = userSettings:get("nextPageKey"):lower()
+    cfg.itemsPerPage = uiSettings:get("itemsPerPage")
+    cfg.openTomesKey = keySettings:get("openTomesKey"):lower()
+    cfg.openLettersKey = keySettings:get("openLettersKey"):lower()
+    cfg.prevPageKey = keySettings:get("prevPageKey"):lower()
+    cfg.nextPageKey = keySettings:get("nextPageKey"):lower()
+    cfg.displayNotificationMessage = notifSettings:get("displayNotificationMessage")
+    cfg.displayNotificationMessageOnReading = notifSettings:get("displayNotificationMessageOnReading")
+    cfg.throttleInventoryNotifications = notifSettings:get("throttleInventoryNotifications")
+    cfg.playNotificationSounds = notifSettings:get("playNotificationSounds")
+    cfg.recognizeSkillBooks = notifSettings:get("recognizeSkillBooks")
+    cfg.showSkillNames = notifSettings:get("showSkillNames")
+    cfg.playSkillNotificationSounds = notifSettings:get("playSkillNotificationSounds")
 end
 
 -- FIX: Clamping logic correctly handles table counting
@@ -69,7 +99,7 @@ local function getClampedPage(dataMap, currentPage)
     return math.min(currentPage, max)
 end
 
-userSettings:subscribe(async:callback(function(section, key)
+uiSettings:subscribe(async:callback(function(section, key)
     updateConfig()
     if key == "itemsPerPage" then
         bookPage = getClampedPage(booksRead, bookPage)
@@ -77,12 +107,24 @@ userSettings:subscribe(async:callback(function(section, key)
         if activeWindow then
             core.sendEvent('BookWorm_JumpToPage', { mode = activeMode, page = (activeMode == "TOMES" and bookPage or notePage) })
         end
-    elseif key:match("Key$") then
+    end
+end))
+
+keySettings:subscribe(async:callback(function(section, key)
+    updateConfig()
+    if key:match("Key$") then
         if activeWindow then
             aux_ui.deepDestroy(activeWindow)
             activeWindow, activeMode = nil, nil
             I.UI.setMode(nil)
         end
+    end
+end))
+
+notifSettings:subscribe(async:callback(function(section, key)
+    updateConfig()
+    if activeWindow then
+        refreshUI(false, true)
     end
 end))
 
@@ -130,8 +172,10 @@ return {
         onSave = function() return { booksRead = booksRead, notesRead = notesRead, saveTimestamp = core.getSimulationTime() } end,
         
         onLoad = function(data) 
-            local loaded = state_manager.processLoad(data)
+            local loaded = state_manager.processLoad(data, utils)
             booksRead, notesRead = loaded.books, loaded.notes
+            -- RESET: Per requirements, reset inventory message tracking on load
+            sessionState.InventoryDiscoveryMessage = "none"
             initializeState()
         end,
 
@@ -140,7 +184,13 @@ return {
                 activeWindow, activeMode = nil, nil 
                 return 
             end
-            scanner_ctrl.update(dt, { scanner = scanner, utils = utils, booksRead = booksRead, notesRead = notesRead })
+            scanner_ctrl.update(dt, { 
+                scanner = scanner, 
+                utils = utils, 
+                booksRead = booksRead, 
+                notesRead = notesRead,
+                cfg = cfg 
+            })
         end,
 
         onKeyPress = function(key)
@@ -167,11 +217,10 @@ return {
 
                 local newMode = (symbol == cfg.openTomesKey) and "TOMES" or "LETTERS"
                 if input.isShiftPressed() then
-                    -- AUDIT: Dynamic labels for exports
-                    local exportLabel = (newMode == "TOMES") and "Tomes" or "Letters"
-                    if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils) 
+                    local rawLabel = (newMode == "TOMES") and L('Player_Label_Tomes') or L('Player_Label_Letters')
+                    if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils)
                     else state_manager.exportLetters(notesRead, utils) end
-                    ui.showMessage(string.format("Exported %s to Log", exportLabel))
+                    ui.showMessage(L('Player_Msg_Export_Success', {label = rawLabel}))
                 else
                     searchString = ""
                     isSearchActive = false
@@ -262,7 +311,9 @@ return {
             local result = ui_handler.handleModeChange(data, {
                 activeWindow = activeWindow, lastLookedAtObj = scanner_ctrl.getLastLookedAt(),
                 booksRead = booksRead, notesRead = notesRead, currentRemoteRecordId = rId, currentRemoteTarget = rTarget,
-                reader = reader, invScanner = invScanner, utils = utils, self = self
+                reader = reader, invScanner = invScanner, utils = utils, self = self,
+                cfg = cfg,
+                sessionState = sessionState 
             })
             if result == "CLOSE_LIBRARY" then activeWindow, activeMode = nil, nil
             elseif result == "CLEANUP_GHOST" then remote.cleanup(self); remote.handleAudio(false) end

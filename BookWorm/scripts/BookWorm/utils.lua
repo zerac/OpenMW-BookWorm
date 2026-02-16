@@ -16,16 +16,20 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org>.
 --]]
- 
+
 local types = require('openmw.types')
 local util = require('openmw.util')
+local storage = require('openmw.storage')
+local core = require('openmw.core') 
 
+local L = core.l10n('BookWorm', 'en')
+local SKILL_L = core.l10n('SKILLS') -- Localized skill names from engine
 local utils = {}
 
--- NEW: Dedicated "unselected" state constant
+local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
+
 utils.FILTER_NONE = "UNSELECTED_FILTER_STATE"
 
--- REVERTED: Using your original hardcoded RGB values for stability
 utils.inkColor = util.color.rgb(0.15, 0.1, 0.05)      
 utils.combatColor = util.color.rgb(0.6, 0.2, 0.1)    
 utils.magicColor = util.color.rgb(0.0, 0.35, 0.65)   
@@ -44,6 +48,7 @@ utils.blacklist = {
     ["char_gen_papers"] = true,
     ["chargen statssheet"] = true,
     ["sc_messenger_note"] = true,
+    ["text_paper_roll_01"] = true,
 }
 
 utils.skillCategories = {
@@ -69,15 +74,40 @@ end
 
 function utils.getBookName(id)
     local record = types.Book.record(id)
-    return record and record.name or "Unknown Tome: " .. id
+    return record and record.name or L('Utils_Name_Fallback', {id = id})
 end
 
+-- Used for Notifications (Localized)
 function utils.getSkillInfo(id)
+    if not notifSettings:get("recognizeSkillBooks") then return nil, "lore" end
     if not utils.isTrackable(id) then return nil, "unknown" end
     local record = types.Book.record(id)
     if record and record.skill then
         local skillId = record.skill:lower()
-        return skillId, utils.skillCategories[skillId] or "unknown"
+        return SKILL_L(record.skill), utils.skillCategories[skillId] or "unknown"
+    end
+    return nil, "lore"
+end
+
+-- Used for Library UI (Localized)
+function utils.getSkillInfoLibrary(id)
+    if not utils.isTrackable(id) then return nil, "unknown" end
+    local record = types.Book.record(id)
+    if record and record.skill then
+        local skillId = record.skill:lower()
+        return SKILL_L(record.skill), utils.skillCategories[skillId] or "unknown"
+    end
+    return nil, "lore"
+end
+
+-- Used for Export to Log (Strict English/Internal ID)
+function utils.getSkillInfoExport(id)
+    if not utils.isTrackable(id) then return nil, "unknown" end
+    local record = types.Book.record(id)
+    if record and record.skill then
+        local skillId = record.skill:lower()
+        -- Return raw skill identifier (e.g. "acrobatics")
+        return record.skill, utils.skillCategories[skillId] or "unknown"
     end
     return nil, "lore"
 end

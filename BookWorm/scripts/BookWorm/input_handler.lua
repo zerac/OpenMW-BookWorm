@@ -41,7 +41,7 @@ local function matchesFilter(id, name, params)
         if uName:sub(1, 2) == "A " and uName:sub(3, 3) == uChar then return true end
         return false
     else
-        local _, cat = params.utils.getSkillInfo(id)
+        local _, cat = params.utils.getSkillInfoLibrary(id)
         return cat == params.activeFilter
     end
 end

@@ -21,28 +21,49 @@ local ui = require('openmw.ui')
 local types = require('openmw.types')
 local ambient = require('openmw.ambient')
 local core = require('openmw.core')
+local storage = require('openmw.storage')
 
+local L = core.l10n('BookWorm', 'en')
 local reader = {}
 
+local notifSettings = storage.playerSection("Settings_BookWorm_Notif")
+
 function reader.mark(obj, booksRead, notesRead, utils)
-    -- Enforce Trackable Guard: Stops enchanted scrolls from being marked or messaging
     if not obj or obj.type ~= types.Book or not utils.isTrackable(obj.recordId) then return end
     
     local id = obj.recordId:lower()
     local isNote = utils.isLoreNote(id)
     local targetTable = isNote and notesRead or booksRead
     
+    local bookName = utils.getBookName(id)
+    local recognizeSkills = notifSettings:get("recognizeSkillBooks")
+    local showNames = notifSettings:get("showSkillNames")
+    local canShow = notifSettings:get("displayNotificationMessageOnReading")
+
     if targetTable[id] then 
-        ui.showMessage("(Already read) " .. utils.getBookName(id))
-        -- Sound is intentionally omitted here to prevent double-audio with engine 
-        -- and redundant noise on re-reads.
+        if canShow then
+            -- ICU Named: (Already read) {name}
+            ui.showMessage(L('Reader_Msg_AlreadyRead', {name = bookName}))
+        end
     else
         targetTable[id] = core.getSimulationTime()
-        ui.showMessage("Marked as read: " .. utils.getBookName(id))
         
-        -- Sound is omitted here. 
-        -- If it is a skill book, the Engine (playerskillhandlers.lua) plays 'skillraise'.
-        -- If it is a lore book, the Engine plays the standard page-turn sound.
+        if canShow then
+            local skillId, _ = utils.getSkillInfo(id)
+            if skillId and recognizeSkills then
+                local labelText = L('Reader_Msg_RareTome')
+                if showNames then
+                    local skillLabel = skillId:sub(1,1):upper() .. skillId:sub(2)
+                    -- ICU Named: {skill} tome
+                    labelText = L('Reader_Msg_SkillTome', {skill = skillLabel})
+                end
+                -- ICU Named: Marked as read: {name} ({label})
+                ui.showMessage(L('Reader_Msg_MarkedRead_Complex', {name = bookName, label = labelText}))
+            else
+                -- ICU Named: Marked as read: {name}
+                ui.showMessage(L('Reader_Msg_MarkedRead_Simple', {name = bookName}))
+            end
+        end
     end
 end
 

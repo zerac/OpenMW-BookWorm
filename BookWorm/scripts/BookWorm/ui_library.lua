@@ -1,4 +1,4 @@
--- scripts/BookWorm/ui_library.lua
+-- ui_library.lua
 --[[
     BookWorm for OpenMW
     Copyright (C) 2026 [zerac]
@@ -7,8 +7,16 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org>.
 --]]
- 
+
 local ui = require('openmw.ui')
 local util = require('openmw.util')
 local types = require('openmw.types')
@@ -17,6 +25,7 @@ local core = require('openmw.core')
 local async = require('openmw.async')
 local I = require('openmw.interfaces') 
 
+local L = core.l10n('BookWorm', 'en')
 local ui_library = {} 
 
 local function nameMatchesLetter(name, char)
@@ -40,7 +49,6 @@ function ui_library.createWindow(params)
     local searchString = params.searchString or ""
     local isSearchActive = params.isSearchActive
     
-    -- AUDIT: Dynamic Key Retrieval
     local prevK = (params.prevPageKey or "I"):upper()
     local nextK = (params.nextPageKey or "O"):upper()
     local openTomesK = (params.openTomesKey or "K"):upper()
@@ -49,8 +57,10 @@ function ui_library.createWindow(params)
     
     local isNone = (activeFilter == utils.FILTER_NONE)
     local contentItems = {}
-    local playerName = types.Player.record(self).name or "Scholar"
-    local titleText = string.format("--- %s'S %s ---", string.upper(playerName), mode)
+    local playerName = types.Player.record(self).name or L('Library_Default_PlayerName')
+    
+    -- FIXED: Used named keys 'player' and 'mode' to satisfy LuaUtil::cast<std::string>(key) in l10n.cpp
+    local titleText = L('Library_Title_Format', {player = string.upper(playerName), mode = mode})
     
     local sortedData = {}
     local counts = { combat = 0, magic = 0, stealth = 0, lore = 0 }
@@ -59,7 +69,7 @@ function ui_library.createWindow(params)
 
     for id, _ in pairs(dataMap) do
         local name = utils.getBookName(id)
-        local _, cat = utils.getSkillInfo(id)
+        local _, cat = utils.getSkillInfoLibrary(id)
         counts[cat] = (counts[cat] or 0) + 1
         for i = 1, #alphabet do
             local char = alphabet:sub(i, i)
@@ -70,7 +80,7 @@ function ui_library.createWindow(params)
     local timestamps = {}
     for id, ts in pairs(dataMap) do 
         local name = utils.getBookName(id)
-        local _, cat = utils.getSkillInfo(id)
+        local _, cat = utils.getSkillInfoLibrary(id)
         local match = true
         if not isNone then
             if #activeFilter == 1 then match = nameMatchesLetter(name, activeFilter)
@@ -122,20 +132,24 @@ function ui_library.createWindow(params)
     local searchLabel = ""
     local searchColor = utils.inkColor
     if isSearchActive then
-        searchLabel = "SEARCHING (press ENTER to end): " .. searchString .. "_"
+        -- Use explicit tostring to ensure the C++ bridge receives a string type
+        searchLabel = L('Library_Search_Active', {text = tostring(searchString)})
         searchColor = util.color.rgb(0.6, 0.2, 0.1)
     elseif searchString ~= "" then
-        searchLabel = string.format("RESULTS: '%s' (BACKSPACE TO CANCEL OR MODIFY)", searchString:upper())
+        -- Explicitly cast the lowercased string
+        local lowerSearch = tostring(searchString):lower()
+        searchLabel = L('Library_Search_Results', {text = lowerSearch})
     else
-        searchLabel = "PRESS BACKSPACE TO SEARCH (avoid UI keys like J)"
+        searchLabel = L('Library_Search_Hint')
     end
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = searchLabel, textSize = 14, textColor = searchColor, font = "DefaultBold" }})
 
     table.insert(contentItems, { type = ui.TYPE.Flex, props = { horizontal = true, arrange = ui.ALIGNMENT.Center }, content = ui.content(ribbonContent) })
-    table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("Page %d of %d", activePage, maxPages), textSize = 14, textColor = utils.inkColor }})
+    -- FIXED: Named keys 'current' and 'total'
+    table.insert(contentItems, { type = ui.TYPE.Text, props = { text = L('Library_Page_Format', {current = activePage, total = maxPages}), textSize = 14, textColor = utils.inkColor }})
     
-    -- AUDIT: Navigation Text dynamic keys
-    local navText = (activePage > 1 and "["..prevK.."] Prev  " or "") .. "  ["..closeK.."] Close  " .. (activePage < maxPages and "  Next ["..nextK.."]" or "")
+    -- FIXED: Named key 'key'
+    local navText = (activePage > 1 and L('Library_Nav_Prev', {key = prevK}) or "") .. L('Library_Nav_Close', {key = closeK}) .. (activePage < maxPages and L('Library_Nav_Next', {key = nextK}) or "")
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = navText, textSize = 16, textColor = utils.inkColor, font = "DefaultBold" }})
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = " ", textSize = 10 }})
 
@@ -143,14 +157,20 @@ function ui_library.createWindow(params)
     local endIdx = math.min(startIdx + itemsPerPage - 1, totalItems)
     for i = startIdx, endIdx do
         local entry = sortedData[i]
-        local _, category = utils.getSkillInfo(entry.id)
+        -- skillLabel is now localized via utils using core.l10n('SKILLS')
+        local skillLabel, category = utils.getSkillInfoLibrary(entry.id)
         local normalColor = utils.getSkillColor(category)
         local hoverColor = util.color.rgb(0.8, 0.6, 0.1)
         local isNew = (entry.ts >= newThreshold and entry.ts > 0)
-        local displayText = (isNew and "(NEW) " or "") .. "- " .. entry.name
+        local entryName = (isNew and L('Library_Entry_New') or "") .. entry.name
+        
+        -- FIXED: Named key 'name'
+        local displayText = L('Library_Entry_Format', {name = entryName})
         if mode == "TOMES" then
-            local skillId, _ = utils.getSkillInfo(entry.id)
-            if skillId then displayText = displayText .. " (" .. skillId:sub(1,1):upper() .. skillId:sub(2) .. ")" end
+            if skillLabel then 
+                -- FIXED: Named keys 'name' and 'skill' - using localized label from utils
+                displayText = L('Library_Entry_Skill_Format', {name = displayText, skill = skillLabel}) 
+            end
         end
         local textProps = { text = displayText, textSize = 18, textColor = normalColor, font = "DefaultBold" }
         table.insert(contentItems, { 
@@ -166,7 +186,7 @@ function ui_library.createWindow(params)
     table.insert(contentItems, { type = ui.TYPE.Text, props = { text = " ", textSize = 10 }})
 
     if mode == "TOMES" then
-        local function createFilterBox(label, count, max, category)
+        local function createFilterBox(labelKey, count, max, category)
             local isActive = (activeFilter == category)
             return {
                 type = ui.TYPE.Container,
@@ -174,7 +194,8 @@ function ui_library.createWindow(params)
                 props = { padding = 3 },
                 content = ui.content({{
                     type = ui.TYPE.Text,
-                    props = { text = string.format("%s: %d/%d", label, count, max), textColor = utils.getSkillColor(category), font = isActive and "DefaultBold" or "Default", textSize = 14 },
+                    -- FIXED: Named keys 'label', 'count', and 'max'
+                    props = { text = L('Library_Filter_Count_Format', {label = L(labelKey), count = count, max = max}), textColor = utils.getSkillColor(category), font = isActive and "DefaultBold" or "Default", textSize = 14 },
                     events = { mouseClick = not isSearchActive and async:callback(function() self:sendEvent('BookWorm_ChangeFilter', { filter = category }) end) or nil }
                 }})
             }
@@ -183,34 +204,49 @@ function ui_library.createWindow(params)
             type = ui.TYPE.Flex,
             props = { horizontal = true, arrange = ui.ALIGNMENT.Center },
             content = ui.content({
-                createFilterBox("Lore", counts.lore, master.lore, "lore"),
+                createFilterBox('Library_Cat_Lore', counts.lore, master.lore, "lore"),
                 { props = { size = util.vector2(10, 0) } },
-                createFilterBox("Combat", counts.combat, master.combat, "combat"),
+                createFilterBox('Library_Cat_Combat', counts.combat, master.combat, "combat"),
                 { props = { size = util.vector2(10, 0) } },
-                createFilterBox("Magic", counts.magic, master.magic, "magic"),
+                createFilterBox('Library_Cat_Magic', counts.magic, master.magic, "magic"),
                 { props = { size = util.vector2(10, 0) } },
-                createFilterBox("Stealth", counts.stealth, master.stealth, "stealth")
+                createFilterBox('Library_Cat_Stealth', counts.stealth, master.stealth, "stealth")
             })
         })
         
         local isSkillFilter = (not isNone and #activeFilter > 1)
         local divisor = isSkillFilter and master[activeFilter] or master.totalTomes
         local perc = math.floor((totalItems / divisor) * 100)
-        local footerLabel = isSkillFilter and (activeFilter:sub(1,1):upper() .. activeFilter:sub(2) .. " Tomes") or "Total Tomes"
-        if not isNone and #activeFilter == 1 then footerLabel = "Filtered (" .. activeFilter .. ")" end
-        if searchString ~= "" then footerLabel = "Found" end
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("%s: %d of %d (%d%%)", footerLabel, totalItems, divisor, perc), textSize = 16, textColor = utils.inkColor }})
         
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("Press Shift+%s to export tomes to log", openTomesK), textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4) }})
+        local footerLabel = ""
+        if isSkillFilter then 
+            -- FIXED: Named key 'skill' - use activeFilter directly (localized name handled in L call)
+            footerLabel = L('Library_Footer_Skill_Tomes', {skill = activeFilter})
+        else 
+            footerLabel = L('Library_Footer_Total_Tomes')
+        end
+
+        -- FIXED: Named key 'filter'
+        if not isNone and #activeFilter == 1 then footerLabel = L('Library_Footer_Filtered', {filter = activeFilter}) end
+        if searchString ~= "" then footerLabel = L('Library_Footer_Found') end
+        
+        -- FIXED: Named keys 'label', 'found', 'total', and 'percent'
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = L('Library_Footer_Stats_Format', {label = footerLabel, found = totalItems, total = divisor, percent = perc}), textSize = 16, textColor = utils.inkColor }})
+        -- FIXED: Named key 'key'
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = L('Library_Export_Tomes_Hint', {key = openTomesK}), textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4) }})
     else
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = "Click on letter to filter list", textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4), font = "Default" } })
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = L('Library_Letter_Filter_Hint'), textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4), font = "Default" } })
         local perc = math.floor((totalItems / master.totalLetters) * 100)
-        local footerLabel = (not isNone and #activeFilter == 1) and ("Filtered (" .. activeFilter .. ")") or "Total Letters"
-        if searchString ~= "" then footerLabel = "Found" end
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("%s: %d of %d (%d%%)", footerLabel, totalItems, master.totalLetters, perc), textSize = 16, textColor = utils.inkColor }})
         
-        -- AUDIT: Added back dynamic export instruction for Letters
-        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = string.format("Press Shift+%s to export letters to log", openLettersK), textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4) }})
+        local footerLabel = L('Library_Footer_Total_Letters')
+        -- FIXED: Named key 'filter'
+        if not isNone and #activeFilter == 1 then footerLabel = L('Library_Footer_Filtered', {filter = activeFilter}) end
+        if searchString ~= "" then footerLabel = L('Library_Footer_Found') end
+        
+        -- FIXED: Named keys 'label', 'found', 'total', and 'percent'
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = L('Library_Footer_Stats_Format', {label = footerLabel, found = totalItems, total = master.totalLetters, percent = perc}), textSize = 16, textColor = utils.inkColor }})
+        -- FIXED: Named key 'key'
+        table.insert(contentItems, { type = ui.TYPE.Text, props = { text = L('Library_Export_Letters_Hint', {key = openLettersK}), textSize = 12, textColor = util.color.rgb(0.4, 0.4, 0.4) }})
     end
 
     return ui.create({
