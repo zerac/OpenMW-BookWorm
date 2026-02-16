@@ -164,7 +164,7 @@ return {
         onSave = function() return { booksRead = booksRead, notesRead = notesRead, saveTimestamp = core.getSimulationTime() } end,
         
         onLoad = function(data) 
-            local loaded = state_manager.processLoad(data)
+            local loaded = state_manager.processLoad(data, utils)
             booksRead, notesRead = loaded.books, loaded.notes
             -- RESET: Per requirements, reset inventory message tracking on load
             sessionState.InventoryDiscoveryMessage = "none"

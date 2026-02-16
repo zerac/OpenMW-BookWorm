@@ -36,20 +36,27 @@ function state_manager.buildMasterList(utils)
     return totals
 end
 
-function state_manager.processLoad(data)
+-- Filter data during load using isTrackable to ensure only valid, non-blacklisted items enter the state
+function state_manager.processLoad(data, utils)
     local state = { books = {}, notes = {} }
     if data then
         local saveMarker = data.saveTimestamp or 0
         if data.booksRead then
             for id, ts in pairs(data.booksRead) do 
                 local lowerId = id:lower()
-                if ts <= saveMarker then state.books[lowerId] = ts end 
+                -- Use isTrackable to filter out blacklisted or invalid items
+                if ts <= saveMarker and utils.isTrackable(lowerId) then 
+                    state.books[lowerId] = ts 
+                end 
             end
         end
         if data.notesRead then
             for id, ts in pairs(data.notesRead) do 
                 local lowerId = id:lower()
-                if ts <= saveMarker then state.notes[lowerId] = ts end 
+                -- Use isTrackable to filter out blacklisted or invalid items
+                if ts <= saveMarker and utils.isTrackable(lowerId) then 
+                    state.notes[lowerId] = ts 
+                end 
             end
         end
     end
