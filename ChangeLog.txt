@@ -1,0 +1,20 @@
+CHANGELOG
+
+--- Version 1.0.1 ---
+
+1. add items into blacklist:
+    - text_paper_roll_01
+2. add settings groups
+    - divide settings to Interface, Controls and Notifications groups
+3. add new settings
+    - disable notifications
+    - throttle inventory messages
+    - disable sound alerts
+    - disable skill / skill name detection
+4. add l10n support for base languages
+    - Google translated, feedback is welcome
+5. new items in blacklist will be removed from saved lists on load
+
+--- Version 1.0.0 ---
+
+Initial mod upload

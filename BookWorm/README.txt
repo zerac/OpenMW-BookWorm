@@ -2,7 +2,7 @@
                                   BOOKWORM
                        The Scholar's Companion for OpenMW
 ================================================================================
-Version: 1.0.0
+Version: 1.0.1
 Author: zerac
 Category: User Interface / Gameplay
 Requirement: OpenMW 0.50.0 (Revision 47d78e0) or newer
@@ -55,6 +55,9 @@ The Library UI and export instructions will automatically update to reflect your
 
 Note: Settings are stored in your global 'settings.cfg', meaning your 
 preferences persist across all characters and save files.
+
+--- L10N ---
+Google translated, so please take with a small rock of salt. Feedback is welcome.
 
 --- INSTALLATION ---
 1. Manual Installation:
