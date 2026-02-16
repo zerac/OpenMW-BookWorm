@@ -209,10 +209,10 @@ return {
 
                 local newMode = (symbol == cfg.openTomesKey) and "TOMES" or "LETTERS"
                 if input.isShiftPressed() then
-                    local exportLabel = (newMode == "TOMES") and L('Player_Label_Tomes') or L('Player_Label_Letters')
-                    if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils) 
+                    local rawLabel = (newMode == "TOMES") and L('Player_Label_Tomes') or L('Player_Label_Letters')
+                    if newMode == "TOMES" then state_manager.exportBooks(booksRead, utils)
                     else state_manager.exportLetters(notesRead, utils) end
-                    ui.showMessage(string.format(L('Player_Msg_Export_Success'), exportLabel))
+                    ui.showMessage(L('Player_Msg_Export_Success', {label = rawLabel}))
                 else
                     searchString = ""
                     isSearchActive = false
